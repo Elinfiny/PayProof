@@ -1,7 +1,7 @@
 name: PayProof one synthetic browser QA
 on:
   pull_request:
-    types: [opened]
+    types: [synchronize]
     branches: [main]
     paths:
       - '.github/workflows/payproof-browser-qa.yml'
@@ -11,7 +11,7 @@ permissions:
 jobs:
   browser:
     if: >-
-      github.event.action == 'opened' &&
+      github.event.action == 'synchronize' &&
       github.event.pull_request.draft == false &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.head.ref == 'review/paypal-v1-browser-qa-once-20261015' &&
@@ -22,7 +22,6 @@ jobs:
     timeout-minutes: 10
     env:
       QA_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-      PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/payproof-browsers
     steps:
       - name: Checkout exact private PR head
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
@@ -39,9 +38,13 @@ jobs:
         run: npm ci --ignore-scripts --no-audit --no-fund --fetch-retries=0
       - name: Official exact Chromium install on standard CI runner
         id: install
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/payproof-browsers
         run: node qa/node_modules/playwright/cli.js install --with-deps chromium chromium-headless-shell
       - name: Single synthetic UI attempt
         id: browser
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/payproof-browsers
         run: node qa/browser.cjs
       - name: Retain partial evidence and step outcomes
         if: always()
