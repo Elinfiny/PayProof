@@ -1,0 +1,61 @@
+name: PayProof one synthetic browser QA
+on:
+  pull_request:
+    types: [opened]
+    branches: [main]
+    paths:
+      - '.github/workflows/payproof-browser-qa.yml'
+      - 'qa/**'
+permissions:
+  contents: read
+jobs:
+  browser:
+    if: >-
+      github.event.action == 'opened' &&
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'review/paypal-v1-browser-qa-once-20261015' &&
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.base.sha == 'eacff0667ba12d306a154907472289ec74690636' &&
+      github.run_attempt == 1
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      QA_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/payproof-browsers
+    steps:
+      - name: Checkout exact private PR head
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Node 22 without cache
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
+        with:
+          node-version: '22.x'
+      - name: Locked QA dependencies
+        id: npm
+        working-directory: qa
+        run: npm ci --ignore-scripts --no-audit --no-fund --fetch-retries=0
+      - name: Official exact Chromium install on standard CI runner
+        id: install
+        run: node qa/node_modules/playwright/cli.js install --with-deps chromium chromium-headless-shell
+      - name: Single synthetic UI attempt
+        id: browser
+        run: node qa/browser.cjs
+      - name: Retain partial evidence and step outcomes
+        if: always()
+        env:
+          QA_NPM_OUTCOME: ${{ steps.npm.outcome }}
+          QA_INSTALL_OUTCOME: ${{ steps.install.outcome }}
+          QA_BROWSER_OUTCOME: ${{ steps.browser.outcome }}
+        run: node qa/browser.cjs --collect-only
+      - name: Private bounded JSON evidence, one day
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: payproof-browser-qa-${{ github.run_id }}-attempt1
+          path: qa-evidence/*.json
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 9
