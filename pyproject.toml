@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=65"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "payproof"
+version = "0.2.0"
+description = "Private payment-evidence workflow with synthetic fixtures and a prepared PayPal sandbox adapter"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.setuptools]
+packages = ["payproof"]
+
+[tool.setuptools.package-data]
+payproof = ["web/*.html", "web/*.js", "web/*.css"]

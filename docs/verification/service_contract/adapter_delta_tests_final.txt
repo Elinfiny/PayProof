@@ -1,0 +1,11 @@
+test_adapter_default_gate_closed (test_workflow.WorkflowTests.test_adapter_default_gate_closed) ... ok
+test_create_unknown_is_consumed_no_retry (test_workflow.WorkflowTests.test_create_unknown_is_consumed_no_retry) ... ok
+test_create_idempotency_header_and_applied_reservation (test_workflow.WorkflowTests.test_create_idempotency_header_and_applied_reservation) ... ok
+test_payment_mutation_endpoint_is_not_exposed (test_workflow.WorkflowTests.test_payment_mutation_endpoint_is_not_exposed) ... ok
+test_webhook_verification_headers_and_failure (test_workflow.WorkflowTests.test_webhook_verification_headers_and_failure) ... ok
+test_ambiguous_webhook_json_is_rejected_before_network (test_workflow.WorkflowTests.test_ambiguous_webhook_json_is_rejected_before_network) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.009s
+
+OK

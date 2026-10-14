@@ -1,0 +1,71 @@
+{
+  "schema": "PAYPROOF_SERVICE_CONTRACT_VERIFICATION_V1",
+  "at_utc": "2026-10-14T21:40:14.241086+00:00",
+  "direction_id": "V28-PAYPAL-REVIEW-NEXT-20261015-01",
+  "direction_source": "Auditor56/recipient_outboxes/PayPal V1",
+  "direction_bytes": 3643,
+  "direction_sha256": "f7f759e5ad43c49c788b0a2a8a577d731ee275d02f6ce2e5b226353fafbdb218",
+  "baseline_archive_sha256": "0ed493ee7d9c805be5ef9ad34a3439867a52004bcc6e4c8431e99b0215ceef0e",
+  "baseline_tests": "27 prior source+installed tests;not rerun as a whole",
+  "new_contract_tests": {
+    "count": 14,
+    "status": "PASS"
+  },
+  "affected_adapter_tests": {
+    "count": 6,
+    "status": "PASS"
+  },
+  "new_wheel_install": {
+    "status": "PASS",
+    "version": "0.2.0",
+    "installed_contract_tests": 14,
+    "source_match": "PASS",
+    "wheel_sha256": "98918e371b64582c7592a78a79daa9ce11cee178654565bca84553ec166c1db4"
+  },
+  "first_test_runner_error": {
+    "type": "ModuleNotFoundError:payproof",
+    "behavior_tests_executed": 0,
+    "retained_log": "adapter_delta_tests.txt",
+    "repair": "Scoped module search path corrected;all6 affected tests passed",
+    "no_effect_replay": true
+  },
+  "sandbox_access_inventory": {
+    "cloud_inventory_reads": 1,
+    "caller_tabs": 0,
+    "existing_paypal_route": "NOT_EXPOSED",
+    "account_wide_absence_claimed": false,
+    "secret_reads": 0,
+    "login_or_navigation": 0,
+    "oauth_or_real_requests": 0
+  },
+  "github": {
+    "repository": "Elinfiny/PayProof",
+    "metadata_response": 404,
+    "absence_proved": false,
+    "connector_repository_create": "NOT_EXPOSED",
+    "gh_cli": "ABSENT",
+    "existing_cloud_tab": "NOT_EXPOSED_THIS_CALLER",
+    "guarded_creation": "NOT_QUALIFIED",
+    "created": false,
+    "canonical": "NOT_INITIALIZED"
+  },
+  "rendering": {
+    "install_retry_count": 0,
+    "qa": "NOT_VERIFIED",
+    "route_owner": "Basics V1"
+  },
+  "host_authority": {
+    "real_receipts_created": 0,
+    "signing_keys_created": 0,
+    "real_secret_access": 0,
+    "grant_verified": "NOT_QUALIFIED",
+    "test_transport_only": true
+  },
+  "live_ai": "NOT_ADMITTED_AND_NOT_INVOKED",
+  "public_json_grants_runtime_authority": false,
+  "fixture_http_wired_to_service": false,
+  "publication_deploy_ci_payments_model_calls": 0,
+  "external_spending_grant_usd": 0,
+  "independent_review": "Pending for this delta;prior baseline accepted by Auditor56",
+  "next_step": "Independent review of this private authority/service delta;qualify existing supported GitHub create and sandbox access/custody route without repeating renderer install or opening spending."
+}

@@ -1,0 +1,19 @@
+test_ai_contract_rejects_tools_mismatched_facts_and_false_certainty (test_service_contract.ServiceContractTests.test_ai_contract_rejects_tools_mismatched_facts_and_false_certainty) ... ok
+test_application_binding_and_context_seal_required (test_service_contract.ServiceContractTests.test_application_binding_and_context_seal_required) ... ok
+test_authenticity_then_fresh_get_then_ledger (test_service_contract.ServiceContractTests.test_authenticity_then_fresh_get_then_ledger) ... ok
+test_fixed_host_paths_have_no_public_argument_and_missing_loader_fails_closed (test_service_contract.ServiceContractTests.test_fixed_host_paths_have_no_public_argument_and_missing_loader_fails_closed) ... ok
+test_get_unknown_and_duplicate_do_not_repeat_get_or_create (test_service_contract.ServiceContractTests.test_get_unknown_and_duplicate_do_not_repeat_get_or_create) ... ok
+test_host_file_rejects_symlink_and_world_readable (test_service_contract.ServiceContractTests.test_host_file_rejects_symlink_and_world_readable) ... ok
+test_live_ai_gate_never_invokes_provider (test_service_contract.ServiceContractTests.test_live_ai_gate_never_invokes_provider) ... ok
+test_operation_scope_blocks_before_network_and_reservation (test_service_contract.ServiceContractTests.test_operation_scope_blocks_before_network_and_reservation) ... ok
+test_public_verified_flag_does_not_supply_authenticity (test_service_contract.ServiceContractTests.test_public_verified_flag_does_not_supply_authenticity) ... ok
+test_read_reconciles_and_projects_no_pii (test_service_contract.ServiceContractTests.test_read_reconciles_and_projects_no_pii) ... ok
+test_source_drift_blocks_before_network (test_service_contract.ServiceContractTests.test_source_drift_blocks_before_network) ... ok
+test_test_context_cannot_reach_real_network (test_service_contract.ServiceContractTests.test_test_context_cannot_reach_real_network) ... ok
+test_unsigned_tampered_or_wrong_scope_receipts_are_rejected (test_service_contract.ServiceContractTests.test_unsigned_tampered_or_wrong_scope_receipts_are_rejected) ... ok
+test_verification_unknown_does_not_fetch_or_mutate (test_service_contract.ServiceContractTests.test_verification_unknown_does_not_fetch_or_mutate) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 0.026s
+
+OK

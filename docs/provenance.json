@@ -1,0 +1,16 @@
+{
+  "packet_id": "PAYPAL-V1-START-20261014-01",
+  "packet_bytes": 5689,
+  "packet_sha256": "37e813846a4a75fb383e885db2b5075feca7fb02bda4d944b7d330a987381bd0",
+  "source": "libfile_505e4189bc588191bcda811c4a35da79@51/operation.effect_replay_boundary/owner_parallel_project_chats_20261014/packets/PayPal V1/body",
+  "policy": "libfile_6f69ae483b088191a1fffefca617bbd5@94",
+  "policy_raw_sha256": "3ce4c8bca2653d74c9c746ae85eb783e29003413b62092d70aa1166a70c8d8fb",
+  "new_project_from_empty_directory": true,
+  "owner": "Marius",
+  "executor": "PayPal V1",
+  "route_owner_count": 1,
+  "source_origin": "New code in current authorized invocation; no adoption of other project files",
+  "shared_resources_modified": false,
+  "github_initialized": false,
+  "created_at_utc": "2026-10-14T20:46:42.425202+00:00"
+}
