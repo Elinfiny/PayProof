@@ -1,0 +1,25 @@
+{
+  "status": "PASS",
+  "clean_venv": true,
+  "assets": {
+    "/": {
+      "http": 200,
+      "bytes": 3252
+    },
+    "/app.js": {
+      "http": 200,
+      "bytes": 3108
+    },
+    "/style.css": {
+      "http": 200,
+      "bytes": 4323
+    },
+    "/api/state": {
+      "http": 200,
+      "bytes": 700
+    }
+  },
+  "workflow": "COMPLETED",
+  "runtime_dependencies": [],
+  "installed_package_outside_source_tree": true
+}

@@ -1,0 +1,17 @@
+{
+  "status": "PASS",
+  "version": "0.2.0",
+  "fresh_venv": true,
+  "installed_outside_source_import": true,
+  "source_and_installed_files_match": [
+    "admission.py",
+    "core.py",
+    "paypal.py",
+    "service.py",
+    "web/index.html",
+    "web/app.js",
+    "web/style.css"
+  ],
+  "runtime_source_fingerprint": "238a47426bab5da3ebb48872b2e16481e2c13f6c678f904706b4b18692efdeaa",
+  "external_network_calls": 0
+}

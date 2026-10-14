@@ -1,0 +1,45 @@
+{
+  "schema": "PAYPROOF_PRIVATE_VERIFICATION_V1",
+  "at_utc": "2026-10-14T20:48:04.058746+00:00",
+  "stage": "PRIVATE_FIXTURE_SLICE",
+  "unit_and_http_tests": {
+    "status": "PASS",
+    "count": 27,
+    "log": "test_results.txt"
+  },
+  "clean_wheel_install": {
+    "status": "PASS",
+    "final_wheel_sha256": "27bc417ee249f629f336faeee8ae9a0baa6d3019b21b547ce24a1ce86ef12499",
+    "installed_suite": "27 tests PASS, outside source tree",
+    "log": "installed_test_results.txt"
+  },
+  "javascript_syntax": "PASS",
+  "visual_qa": {
+    "status": "NOT_VERIFIED",
+    "required_viewports": [
+      390,
+      1440
+    ],
+    "keyboard": "NOT_VERIFIED",
+    "reason": "Local Playwright module exists but Chromium executable absent; one official installer invocation failed archive-integrity validation (its internal downloader made five attempts). No invalid downloaded code executed. No remote/shared browser integration used.",
+    "prepared_script": "qa/browser.cjs",
+    "script_executed": false
+  },
+  "real_paypal_sandbox": "NOT_EXECUTED",
+  "real_webhook_authenticity": "NOT_EXECUTED",
+  "live_ai": "NOT_EXECUTED",
+  "external_account_writes": 0,
+  "real_money_operations": 0,
+  "model_api_calls": 0,
+  "numeric_api_budget_usd": 0,
+  "independent_assurance": "PENDING_AUDITOR_REVIEW",
+  "publication": "NOT_EXECUTED",
+  "video": "PLAN_ONLY",
+  "submission": "NOT_EXECUTED",
+  "limits": [
+    "Real create/order/get/webhook methods tested only with fake transport",
+    "Loopback synthetic server is not production",
+    "Personal contest eligibility and account access remain unqualified"
+  ],
+  "next_step": "Auditor reviews own project isolation and source package; then admits a supported visual QA route and sandbox access/custody if eligible."
+}

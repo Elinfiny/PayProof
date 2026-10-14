@@ -1,0 +1,32 @@
+test_csrf_and_invalid_input_and_live_route_rejected (test_workflow.HTTPTests.test_csrf_and_invalid_input_and_live_route_rejected) ... ok
+test_frontend_assets_and_path_traversal (test_workflow.HTTPTests.test_frontend_assets_and_path_traversal) ... ok
+test_http_workflow_and_mode_truth (test_workflow.HTTPTests.test_http_workflow_and_mode_truth) ... ok
+test_adapter_default_gate_closed (test_workflow.WorkflowTests.test_adapter_default_gate_closed) ... ok
+test_ambiguous_webhook_json_is_rejected_before_network (test_workflow.WorkflowTests.test_ambiguous_webhook_json_is_rejected_before_network) ... ok
+test_capture_resource_id_is_not_order_id (test_workflow.WorkflowTests.test_capture_resource_id_is_not_order_id) ... ok
+test_complete_capture_is_required (test_workflow.WorkflowTests.test_complete_capture_is_required) ... ok
+test_concurrent_duplicates_have_single_effect (test_workflow.WorkflowTests.test_concurrent_duplicates_have_single_effect) ... ok
+test_conflict_is_not_paid (test_workflow.WorkflowTests.test_conflict_is_not_paid) ... ok
+test_create_idempotency_header_and_applied_reservation (test_workflow.WorkflowTests.test_create_idempotency_header_and_applied_reservation) ... ok
+test_create_unknown_is_consumed_no_retry (test_workflow.WorkflowTests.test_create_unknown_is_consumed_no_retry) ... ok
+test_currency_and_identity_conflicts (test_workflow.WorkflowTests.test_currency_and_identity_conflicts) ... ok
+test_duplicate_event_fetches_only_once (test_workflow.WorkflowTests.test_duplicate_event_fetches_only_once) ... ok
+test_equal_timestamp_conflicting_facts_fail_closed (test_workflow.WorkflowTests.test_equal_timestamp_conflicting_facts_fail_closed) ... ok
+test_event_tamper_same_id_is_rejected (test_workflow.WorkflowTests.test_event_tamper_same_id_is_rejected) ... ok
+test_expectation_cannot_be_overwritten (test_workflow.WorkflowTests.test_expectation_cannot_be_overwritten) ... ok
+test_malformed_webhook_nested_fields_are_rejected (test_workflow.WorkflowTests.test_malformed_webhook_nested_fields_are_rejected) ... ok
+test_money_invalid (test_workflow.WorkflowTests.test_money_invalid) ... ok
+test_payment_mutation_endpoint_is_not_exposed (test_workflow.WorkflowTests.test_payment_mutation_endpoint_is_not_exposed) ... ok
+test_pii_never_leaves_projection (test_workflow.WorkflowTests.test_pii_never_leaves_projection) ... ok
+test_refund_requires_review (test_workflow.WorkflowTests.test_refund_requires_review) ... ok
+test_stale_order_read_cannot_regress_verified_state (test_workflow.WorkflowTests.test_stale_order_read_cannot_regress_verified_state) ... ok
+test_stale_webhook_does_not_claim_applied (test_workflow.WorkflowTests.test_stale_webhook_does_not_claim_applied) ... ok
+test_unknown_duplicate_requires_explicit_read_reconciliation (test_workflow.WorkflowTests.test_unknown_duplicate_requires_explicit_read_reconciliation) ... ok
+test_unknown_preserves_historical_evidence_not_current_paid (test_workflow.WorkflowTests.test_unknown_preserves_historical_evidence_not_current_paid) ... ok
+test_unverified_event_changes_nothing (test_workflow.WorkflowTests.test_unverified_event_changes_nothing) ... ok
+test_webhook_verification_headers_and_failure (test_workflow.WorkflowTests.test_webhook_verification_headers_and_failure) ... ok
+
+----------------------------------------------------------------------
+Ran 27 tests in 1.586s
+
+OK
