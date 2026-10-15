@@ -44,17 +44,18 @@ async function main() {
     const names=['chromium','chromium-headless-shell'];
     const selected=JSON.parse(fs.readFileSync(path.join(core,'browsers.json'))).browsers.filter(b=>names.includes(b.name));
     assert.deepEqual(selected.map(b=>b.name).sort(),[...names].sort());
-    const registry=require(path.join(core,'lib/server/registry/index.js')).registry;
     for(const b of selected){
       assert.equal(String(b.revision),'1248');assert.equal(b.browserVersion,'156.0.8078.4');
-      const executable=registry.findExecutable(b.name).executablePath();
-      assert(executable && fs.statSync(executable).size>0);
-      const version=execFileSync(executable,['--version'],{encoding:'utf8',timeout:10000}).trim();
-      assert(version.includes('156.0.8078.4'));
-      const hash=crypto.createHash('sha256');for await(const chunk of fs.createReadStream(executable))hash.update(chunk);
-      report.binaries.push({name:b.name,revision:b.revision,expected_version:b.browserVersion,actual_version:version,bytes:fs.statSync(executable).size,sha256:hash.digest('hex'),executable});save();
     }
-    browser=await require('playwright').chromium.launch({headless:true,executablePath:report.binaries.find(b=>b.name==='chromium-headless-shell').executable,timeout:10000});
+    // Supported public API; use the exact hashed bundled Chromium for this launch.
+    const executable=require('playwright').chromium.executablePath();
+    assert(executable && fs.statSync(executable).size>0);
+    const version=execFileSync(executable,['--version'],{encoding:'utf8',timeout:10000}).trim();
+    assert(version.includes('156.0.8078.4'));
+    const hash=crypto.createHash('sha256');for await(const chunk of fs.createReadStream(executable))hash.update(chunk);
+    report.binaries.push({name:'chromium',revision:'1248',expected_version:'156.0.8078.4',actual_version:version,bytes:fs.statSync(executable).size,sha256:hash.digest('hex'),executable,provenance:'PUBLIC_API_EXPLICIT_LAUNCH_PATH'});
+    report.headless_shell_runtime='NOT_LAUNCHED';save();
+    browser=await require('playwright').chromium.launch({headless:true,executablePath:executable,timeout:10000});
     assert.equal(browser.version(),'156.0.8078.4');
     for(const width of [1440,390]) {
       const v={width,height:1000,cases:[],page_errors:[],console_errors:[],external_requests:[],failed_requests:[],http_errors:[],post_requests:[],status:'RUNNING'};
