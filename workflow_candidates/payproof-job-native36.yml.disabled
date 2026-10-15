@@ -1,0 +1,14 @@
+name: Private inactive job-native36
+on:
+  workflow_dispatch:
+permissions: {}
+jobs:
+  read_only:
+    if: ${{ false }}
+    runs-on: ubuntu-24.04
+    permissions: {}
+    steps:
+      - name: Refuse unbound native producers
+        run: exit 1
+# No environment/secret references, checkout, runtime tokens or native admission.
+# Enablement and genuine producer integration require separate review/publication.
