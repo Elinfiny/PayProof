@@ -212,3 +212,256 @@ def require_test_evidence(identity):
             or identity.test_only is not True):
         _reject('VERIFIED_TEST_EVIDENCE_REQUIRED')
     return identity
+
+
+# Private transport candidate16. Production calls stay unbound; factories used
+# by the six inert cases are explicit TEST_ONLY providers, never TLS provenance.
+import http.client
+import ssl
+import time
+
+
+class TransportUnknown(IdentityRefused):
+    pass
+
+
+@dataclass(repr=False)
+class _PrivateOriginal:
+    phase: str
+    value: object = field(default=None, repr=False)
+    error: object = field(default=None, repr=False)
+
+
+class _FixedHTTPS:
+    """Per-call bounded HTTPS, with a separately claimed best-effort close.
+
+    Every blocking return/exception is privately owned before its post guard.
+    No fake factory grants authentic TLS/caller provenance or production access.
+    """
+    def __init__(self, *, factory=None, clock=time.monotonic, seconds=300, limit_calls=1, scope=None):
+        if (type(seconds) not in (int, float) or not math.isfinite(seconds) or not 0 < seconds <= 300
+                or type(limit_calls) is not int or not 1 <= limit_calls <= 10):
+            _reject('BOUNDED_TRANSPORT_BUDGET_REQUIRED')
+        self._factory = factory if factory is not None else http.client.HTTPSConnection
+        self._clock, self._scope = clock, scope
+        self._limit_calls, self.calls = limit_calls, 0
+        self.originals = []  # Legacy HTTP outcomes, still private.
+        self._per_call_originals = []  # Constructor/request/status/read/close, private.
+        self._clock_errors = []  # Original clock failures, separate from primary.
+        self.first_unknown = None
+        self._clock_phase = 'INITIAL_CLOCK'
+        self._deadline = self._now('INITIAL_CLOCK', 'INITIALIZE') + seconds
+
+    def _retain(self, phase, value=None, error=None):
+        original = _PrivateOriginal(phase, value, error)
+        self.originals.append(original)
+        self._per_call_originals.append(original)
+
+    def _own_call(self, operation, *, value=None, error=None):
+        original = _PrivateOriginal(operation, value, error)
+        self._per_call_originals.append(original)
+        return original
+
+    def _unknown(self, code, phase, operation=None):
+        if self.first_unknown is None:
+            self.first_unknown = {'code': code, 'phase': phase, 'operation': operation,
+                'call': self.calls, 'original_index': len(self.originals) - 1,
+                'call_original_index': len(self._per_call_originals) - 1}
+
+    def _now(self, phase, operation):
+        self._clock_phase = phase
+        try:
+            value = self._clock()
+        except Exception as error:
+            self._clock_errors.append(error)
+            self._retain('CLOCK_EXCEPTION', error=error)
+            self._unknown('CLOCK_EXCEPTION', phase, operation)
+            raise TransportUnknown('TRANSPORT_UNKNOWN') from None
+        try:
+            valid = type(value) in (int, float) and math.isfinite(value)
+        except Exception as error:
+            self._own_call('INVALID_CLOCK_RETURN', value=value)
+            self._clock_errors.append(error)
+            self._retain('CLOCK_EXCEPTION', error=error)
+            self._unknown('CLOCK_EXCEPTION', phase, operation)
+            raise TransportUnknown('TRANSPORT_UNKNOWN') from None
+        if not valid:
+            self._own_call('INVALID_CLOCK_RETURN', value=value)
+            error = IdentityRefused('FINITE_MONOTONIC_CLOCK_REQUIRED')
+            self._clock_errors.append(error)
+            self._retain('CLOCK_EXCEPTION', error=error)
+            self._unknown('CLOCK_EXCEPTION', phase, operation)
+            raise TransportUnknown('TRANSPORT_UNKNOWN') from None
+        return value
+
+    def _guard(self, phase, operation=None, *, cleanup=False):
+        try:
+            now = self._now(phase, operation)
+        except TransportUnknown:
+            if cleanup:
+                return None  # Clock failure cannot skip the already claimed close.
+            raise
+        remaining = self._deadline - now
+        if remaining <= 0:
+            self._unknown('ABSOLUTE_DEADLINE', phase, operation)
+        if self.first_unknown is not None and not cleanup:
+            raise TransportUnknown('TRANSPORT_UNKNOWN') from None
+        return max(0.0, remaining)
+
+    def _refresh_timeout(self, conn, remaining, *, cleanup=False):
+        if remaining is None:
+            return  # No invented fresh timeout when clock evidence is absent.
+        try:
+            conn.timeout = remaining
+            sock = getattr(conn, 'sock', None)
+            if sock is not None:
+                self._guard('PRE_REQUEST', 'SOCKET_SETTIMEOUT', cleanup=cleanup)
+                latest = self._guard('PRE_INVOKE', 'SOCKET_SETTIMEOUT', cleanup=cleanup)
+                if latest is not None:
+                    remaining = latest
+                    conn.timeout = remaining
+                outcome = sock.settimeout(remaining)
+                self._own_call('SOCKET_SETTIMEOUT_RETURN', value=outcome)
+                self._guard('POST_RETURN', 'SOCKET_SETTIMEOUT', cleanup=cleanup)
+        except Exception as error:
+            self._retain('SOCKET_TIMEOUT_EXCEPTION', error=error)
+            self._unknown('SOCKET_TIMEOUT_EXCEPTION', 'POST_RETURN', 'SOCKET_SETTIMEOUT')
+            if not cleanup:
+                raise TransportUnknown('TRANSPORT_UNKNOWN') from None
+
+    def _invoke(self, operation, function, *, conn=None, on_owned=None, legacy=None):
+        self._guard('PRE_REQUEST', operation)
+        remaining = self._guard('PRE_INVOKE', operation)
+        if conn is not None:
+            self._refresh_timeout(conn, remaining)
+        # Recheck after timeout configuration; all calls share the initial deadline.
+        remaining = self._guard('PRE_INVOKE', operation)
+        if conn is not None:
+            conn.timeout = remaining
+        try:
+            value = function(remaining)
+        except Exception as error:
+            self._retain(operation + '_EXCEPTION', error=error)
+            self._unknown('HTTP_EXCEPTION', 'POST_RETURN', operation)
+            # Original primary is already owned before any fallible clock guard.
+            self._guard('POST_RETURN', operation)
+            raise TransportUnknown('TRANSPORT_UNKNOWN') from None
+        self._own_call(operation + '_RETURN', value=value)
+        if legacy is not None:
+            self._retain(legacy, value=value)
+        if on_owned is not None:
+            on_owned(value)  # Internal ownership transfer, before post-return guard.
+        self._guard('POST_RETURN', operation)
+        return value
+
+    def _close_once(self, holder):
+        conn = holder['conn']
+        if conn is None or holder['close_claimed']:
+            return
+        holder['close_claimed'] = True  # Claim before any clock/helper may fail.
+        try:
+            self._guard('PRE_REQUEST_CLEANUP', 'CLOSE', cleanup=True)
+            remaining = self._guard('PRE_INVOKE_CLEANUP', 'CLOSE', cleanup=True)
+            self._refresh_timeout(conn, remaining, cleanup=True)
+        except Exception as error:
+            self._retain('CLEANUP_PREPARATION_EXCEPTION', error=error)
+            self._unknown('CLEANUP_PREPARATION_EXCEPTION', 'PRE_INVOKE_CLEANUP', 'CLOSE')
+        # Clock/expiry/timeout configuration cannot bypass the close attempt.
+        try:
+            outcome = conn.close()
+        except Exception as error:
+            self._retain('CLEANUP_EXCEPTION', error=error)
+            self._unknown('CLEANUP_EXCEPTION', 'POST_RETURN_CLEANUP', 'CLOSE')
+        else:
+            self._own_call('CLOSE_RETURN', value=outcome)
+            self._retain('CLEANUP_RETURN', value=outcome)
+        self._guard('POST_RETURN_CLEANUP', 'CLOSE', cleanup=True)
+
+    def exchange(self, method, host, path, *, body=None, headers=None, limit=65536):
+        if self._scope is not _TEST or not callable(self._factory):
+            _reject('AUTHENTIC_RUNTIME_BINDING_UNBOUND')
+        if self.first_unknown is not None or self.calls >= self._limit_calls:
+            _reject('NO_RETRY_OR_FALLBACK')
+        if (host not in {'token.actions.githubusercontent.com', 'api.github.com'}
+                or type(path) is not str or not path.startswith('/')
+                or any(c in path for c in ('\r', '\n', '?', '#', '://'))
+                or method not in {'GET', 'POST'} or limit != 65536):
+            _reject('FIXED_TRANSPORT_ROUTE')
+        self._guard('PRE_REQUEST', 'EXCHANGE')
+        self.calls += 1
+        self._guard('PRE_INVOKE', 'EXCHANGE')
+        holder = {'conn': None, 'close_claimed': False}
+        pending = None
+        status = raw = None
+        try:
+            context = self._invoke('TLS_CONTEXT', lambda remaining: ssl.create_default_context())
+            if context.verify_mode != ssl.CERT_REQUIRED or not context.check_hostname:
+                _reject('TLS_VERIFICATION_REQUIRED')
+            self._invoke('ALPN', lambda remaining: context.set_alpn_protocols(['http/1.1']))
+            conn = self._invoke('CONSTRUCTOR', lambda remaining: self._factory(
+                host, 443, timeout=remaining, context=context),
+                on_owned=lambda value: holder.__setitem__('conn', value))
+            self._invoke('REQUEST', lambda remaining: conn.request(method, path, body=body,
+                         headers=headers or {}), conn=conn)
+            response = self._invoke('GETRESPONSE', lambda remaining: conn.getresponse(),
+                                    conn=conn, legacy='HTTP_RESPONSE')
+            status = self._invoke('STATUS', lambda remaining: response.status, conn=conn)
+            raw = self._invoke('READ', lambda remaining: response.read(limit + 1),
+                               conn=conn, legacy='HTTP_BODY')
+            if type(status) is not int or type(raw) is not bytes or len(raw) > limit:
+                _reject('HTTP_RESPONSE_BOUNDS')
+        except Exception as error:
+            self._retain('HTTP_EXCEPTION', error=error)
+            pending = error
+            if not isinstance(error, IdentityRefused):
+                self._unknown('HTTP_EXCEPTION', 'POST_RETURN', 'EXCHANGE')
+        finally:
+            self._close_once(holder)
+        if self.first_unknown is not None:
+            raise TransportUnknown('TRANSPORT_UNKNOWN') from None
+        if pending is not None:
+            raise pending
+        return status, raw
+
+    def metadata(self):
+        return {'scope': 'TEST_ONLY_TRANSPORT_MECHANICS', 'requests': self.calls,
+                'first_unknown': dict(self.first_unknown) if self.first_unknown else None,
+                'raw_values_exported': False, 'authenticated_TLS_provenance': False,
+                'backend_cancellation': 'NOT_CLAIMED'}
+
+
+class FixedJWKSLoader:
+    def __init__(self, runtime_binding=None):
+        self._binding = None
+        self._wire = None
+        self._consumed = False
+
+    @classmethod
+    def for_test(cls, https_connection_factory, *, clock=time.monotonic, seconds=300):
+        loader = cls()
+        loader._wire = _FixedHTTPS(factory=https_connection_factory, clock=clock,
+                                  seconds=seconds, limit_calls=1, scope=_TEST)
+        return loader
+
+    def fetch_production(self, *args, **kwargs):
+        _reject('AUTHENTIC_RUNTIME_BINDING_UNBOUND')
+
+    def fetch_for_test(self, *, observed_at, now):
+        if self._wire is None or self._consumed:
+            _reject('JWKS_UNBOUND_OR_ALREADY_CONSUMED')
+        if (type(observed_at) is not int or type(now) is not int
+                or not 0 <= now - observed_at <= 300):
+            _reject('JWKS_FRESHNESS')
+        self._consumed = True
+        status, raw = self._wire.exchange('GET', 'token.actions.githubusercontent.com',
+                                         '/.well-known/jwks', headers={'Accept': 'application/json'})
+        if status != 200:
+            _reject('JWKS_STATUS_NO_REDIRECT')
+        data = _object(raw, 65536)
+        if set(data) != {'keys'} or type(data['keys']) is not list or not 1 <= len(data['keys']) <= 32:
+            _reject('JWKS_SHAPE')
+        # Even when an injected fake claims TLS, its snapshot remains TEST_ONLY.
+        return JWKSSnapshot.synthetic_for_test(raw, observed_at=observed_at)
+
+    def metadata(self):
+        return self._wire.metadata() if self._wire else {'scope': 'UNBOUND', 'requests': 0}

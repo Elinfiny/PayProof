@@ -1,0 +1,58 @@
+# INACTIVE_SOURCE_ONLY. Not under .github/workflows and not published in unit16.
+# Both jobs also fail closed. No permissions/secrets/jobs are currently activated.
+name: PayProof proposed separated reservation and read pilot
+on: workflow_dispatch
+permissions: {}
+jobs:
+  reservation:
+    if: ${{ false && github.run_attempt == 1 }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    outputs:
+      consumed_commit: ${{ steps.reserve.outputs.consumed_commit }}
+      effect_key: ${{ steps.reserve.outputs.effect_key }}
+      bound_run_id: ${{ steps.reserve.outputs.bound_run_id }}
+      bound_attempt: ${{ steps.reserve.outputs.bound_attempt }}
+      bound_source: ${{ steps.reserve.outputs.bound_source }}
+    steps:
+      - name: Checkout prospective reviewed source
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Reserve only after authentic reviewed bootstrap binding exists
+        id: reserve
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        # The module CLI intentionally refuses UNBOUND and emits no outputs.
+        # No PayPal credential is referenced or injected in this job.
+        run: python3 -m payproof.bootstrap_bridge reserve
+  oauth_get:
+    needs: [reservation]
+    if: >-
+      ${{ false && github.run_attempt == 1 &&
+          needs.reservation.result == 'success' &&
+          needs.reservation.outputs.bound_run_id == github.run_id &&
+          needs.reservation.outputs.bound_attempt == '1' &&
+          needs.reservation.outputs.bound_source == github.sha &&
+          needs.reservation.outputs.consumed_commit != '' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout same prospective reviewed source
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Still inactive until independently admitted consumer and real bindings
+        env:
+          # Names only in unpublished source; no protected values were read.
+          PAYPROOF_PAYPAL_SANDBOX_CLIENT_ID: ${{ secrets.PAYPROOF_PAYPAL_SANDBOX_CLIENT_ID }}
+          PAYPROOF_PAYPAL_SANDBOX_CLIENT_SECRET: ${{ secrets.PAYPROOF_PAYPAL_SANDBOX_CLIENT_SECRET }}
+        # A future consumer must re-read/verify the consumed record with read-only
+        # token and real identity, not trust needs/output strings as authority.
+        run: python3 -m payproof.bootstrap_bridge consume

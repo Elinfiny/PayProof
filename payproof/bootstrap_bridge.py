@@ -89,3 +89,241 @@ class BootstrapBridge:
                 'restart': 'REFUSE_IF_ANY_RECORD_EXISTS', 'operations': ['orders:read'],
                 'credentials_exported': False, 'issuer_generated': False, 'host_receipt_generated': False,
                 'production_context': False, 'missing_binding': 'AUTHENTIC_REVIEWED_RUNTIME_BOOTSTRAP_BINDING'}
+
+    def reserve_for_test(self, token, *, https_connection_factory, source_commit, source_tree,
+                         caller_run_id, caller_run_attempt, clock, wall_clock, **inputs):
+        # Complete source/custody/registry checks BEFORE any provider-shaped call.
+        self.inspect_for_test(token, **inputs)
+        identity = GitHubOIDCVerifier().verify_for_test(token, policy=inputs['policy'],
+            snapshot=inputs['snapshot'], now=inputs['now'])
+        reservation = GitRefReservation.for_test(https_connection_factory, identity=identity,
+            source_binding=inputs['source_binding'], source_commit=source_commit,
+            source_tree=source_tree, clock=clock, wall_clock=wall_clock)
+        return reservation.reserve_for_test(caller_run_id=caller_run_id,
+            caller_run_attempt=caller_run_attempt, grant_id=inputs['source_binding'].grant_id)
+
+
+import base64
+import json
+import time
+from .github_oidc import _FixedHTTPS, _TEST, _object, TransportUnknown
+
+_REPO = '/repos/Elinfiny/PayProof'
+_RESERVATION_TEST_SEAL = object()
+
+
+def _canonical(value):
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':')).encode()
+
+
+def _sha1_object(kind, raw):
+    return hashlib.sha1(kind.encode() + b' ' + str(len(raw)).encode() + b'\0' + raw).hexdigest()
+
+
+def _hex40(value):
+    return type(value) is str and re.fullmatch(r'[0-9a-f]{40}', value) is not None
+
+
+@dataclass(frozen=True, repr=False)
+class _ReservationBinding:
+    source: SourceBinding = field(repr=False)
+    identity: object = field(repr=False)
+    source_commit: str
+    source_tree: str
+    _seal: object = field(repr=False)
+
+
+class GitRefReservation:
+    """Real Git REST create-only protocol, exercised only by explicit fake HTTPS.
+
+    A ref is mutable by sufficiently privileged other actors. Namespace write/delete
+    protection remains separately unqualified; no global append-only claim.
+    """
+    def __init__(self, runtime_binding=None):
+        self._binding = None
+        self._wire = None
+        self._wall_clock = time.time
+        self._consumed = False
+        self.state = 'UNBOUND'
+        self._writes_started = 0
+        self._private_outcome = None
+        self._effect_key = self._commit = None
+        self._job_token = None
+
+    @classmethod
+    def for_test(cls, https_connection_factory, *, identity, source_binding,
+                 source_commit, source_tree, clock=time.monotonic, wall_clock=time.time):
+        require_test_evidence(identity)
+        if (type(source_binding) is not SourceBinding or not _hex40(source_commit)
+                or not _hex40(source_tree) or source_commit != identity.policy.sha):
+            raise IdentityRefused('AUTHENTIC_SOURCE_BINDING_REQUIRED')
+        now = wall_clock()
+        if type(now) not in (int, float) or not identity.policy.not_before <= now < identity.policy.expires_at:
+            raise IdentityRefused('SOURCE_ABSOLUTE_DEADLINE')
+        result = cls()
+        result._binding = _ReservationBinding(source_binding, identity, source_commit, source_tree,
+                                              _RESERVATION_TEST_SEAL)
+        result._wall_clock = wall_clock
+        result._wire = _FixedHTTPS(factory=https_connection_factory, clock=clock,
+            seconds=identity.policy.expires_at - now, limit_calls=10, scope=_TEST)
+        result.state = 'TEST_ONLY_READY'
+        result._job_token = 'TEST_ONLY_NOT_A_PROVIDER_CREDENTIAL'
+        return result
+
+    def reserve_production(self, *args, **kwargs):
+        raise IdentityRefused('AUTHENTIC_RUNTIME_BINDING_UNBOUND')
+
+    def _api(self, method, suffix, payload=None):
+        if self._wall_clock() >= self._binding.identity.policy.expires_at:
+            raise TransportUnknown('SOURCE_ABSOLUTE_DEADLINE')
+        if method == 'POST':
+            self._writes_started += 1
+        status, raw = self._wire.exchange(method, 'api.github.com', _REPO + suffix,
+            body=_canonical(payload) if payload is not None else None,
+            headers={'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json',
+                     'X-GitHub-Api-Version': '2026-03-10',
+                     'Authorization': 'Bearer ' + self._job_token})
+        if self._wall_clock() >= self._binding.identity.policy.expires_at:
+            raise TransportUnknown('SOURCE_ABSOLUTE_DEADLINE')
+        return status, raw
+
+    def reserve_for_test(self, *, caller_run_id, caller_run_attempt, grant_id, restart=False):
+        binding = self._binding
+        if binding is None or binding._seal is not _RESERVATION_TEST_SEAL or self._wire is None:
+            raise IdentityRefused('AUTHENTIC_RUNTIME_BINDING_UNBOUND')
+        policy = binding.identity.policy
+        if (self._consumed or restart is not False or caller_run_attempt != '1'
+                or type(caller_run_attempt) is not str or caller_run_id != policy.run_id
+                or type(caller_run_id) is not str or grant_id != binding.source.grant_id):
+            raise IdentityRefused('RESTART_ATTEMPT_OR_RUN_BINDING_REFUSED')
+        self._consumed = True  # Never reset after failure, UNKNOWN or a new token.
+        self.state = 'ATTEMPTING_TEST_ONLY'
+        source = binding.source
+        key = hashlib.sha256((source.grant_id + ':' + source.order_id_sha256).encode()).hexdigest()
+        self._effect_key = key
+        ref = 'refs/tags/payproof-reservations/v1/' + key
+        suffix = '/git/ref/tags/payproof-reservations/v1/' + key
+        record = {'schema': 'PAYPROOF_CONSUMED_RESERVATION_V1', 'state': 'CONSUMED_BEFORE_OAUTH',
+            'repository_id': '1419908202', 'repository_owner_id': '273768139',
+            'grant_id': source.grant_id, 'effect_key_sha256': key,
+            'order_id_sha256': source.order_id_sha256,
+            'registry_receipt_sha256': source.registry_receipt_sha256,
+            'reviewed_bundle_sha256': source.reviewed_bundle_sha256,
+            'admission_source_sha256': source.admission_source_sha256,
+            'source_commit': binding.source_commit, 'source_tree': binding.source_tree,
+            'run_id': policy.run_id, 'run_attempt': '1', 'absolute_deadline_epoch': policy.expires_at,
+            'OAuth_allowances_consumed': 1, 'GET_allowances_consumed': 1,
+            'restart': 'REFUSE_ALL_EXISTING_RECORDS', 'scope': 'TEST_ONLY_TRANSPORT_MECHANICS'}
+        expected_raw = _canonical(record)
+        blob_sha = _sha1_object('blob', expected_raw)
+        tree_body = b'100644 reservation.json\0' + bytes.fromhex(blob_sha)
+        expected_tree = _sha1_object('tree', tree_body)
+        message = 'Consume PayProof read allowance ' + key
+        try:
+            status, raw = self._api('GET', '')
+            repo = _object(raw, 65536)
+            if (status != 200 or repo.get('id') != 1419908202 or repo.get('private') is not True
+                    or repo.get('full_name') != 'Elinfiny/PayProof'
+                    or type(repo.get('owner')) is not dict or repo['owner'].get('id') != 273768139):
+                raise IdentityRefused('SAME_PRIVATE_REPOSITORY_REQUIRED')
+            status, raw = self._api('GET', suffix)
+            if status == 200:
+                self.state = 'EXISTING_RECORD_REFUSED'
+                raise IdentityRefused('EXISTING_RECORD_NEVER_ADOPTED')
+            if status != 404:
+                raise IdentityRefused('REFERENCE_ABSENCE_UNPROVED')
+            status, raw = self._api('POST', '/git/trees', {'tree': [
+                {'path': 'reservation.json', 'mode': '100644', 'type': 'blob', 'content': expected_raw.decode()}]})
+            created_tree = _object(raw, 65536)
+            if status != 201 or created_tree.get('sha') != expected_tree:
+                raise TransportUnknown('TREE_CREATE_UNKNOWN')
+            status, created_commit_raw = self._api('POST', '/git/commits',
+                {'message': message, 'tree': expected_tree, 'parents': [binding.source_commit]})
+            created_commit = _object(created_commit_raw, 65536)
+            commit = created_commit.get('sha')
+            if status != 201 or not _hex40(commit):
+                raise TransportUnknown('COMMIT_CREATE_UNKNOWN')
+            self._commit = commit
+            status, created_ref_raw = self._api('POST', '/git/refs', {'ref': ref, 'sha': commit})
+            if status in (409, 422):
+                # 422 alone is validation/spam, NOT proof of an existing record.
+                collision_status, collision_raw = self._api('GET', suffix)
+                self._private_outcome = (status, collision_status, collision_raw)
+                if collision_status == 200:
+                    self.state = 'COLLISION_RECORD_REFUSED'
+                    raise IdentityRefused('COLLISION_CONFIRMED_NEVER_ADOPTED')
+                raise IdentityRefused('REF_CREATE_REJECTED_EXISTENCE_UNPROVED')
+            if status != 201:
+                raise TransportUnknown('ATOMIC_REF_CREATE_UNKNOWN')
+            created_ref = _object(created_ref_raw, 65536)
+            if (created_ref.get('ref') != ref or created_ref.get('object', {}).get('sha') != commit
+                    or created_ref.get('object', {}).get('type') != 'commit'):
+                raise TransportUnknown('REF_CREATE_BINDING_UNKNOWN')
+            status, first_ref_raw = self._api('GET', suffix)
+            if status != 200 or first_ref_raw != created_ref_raw:
+                raise TransportUnknown('REF_READBACK_UNKNOWN')
+            status, commit_raw = self._api('GET', '/git/commits/' + commit)
+            commit_read = _object(commit_raw, 65536)
+            if (status != 200 or commit_raw != created_commit_raw
+                    or commit_read.get('sha') != commit or commit_read.get('tree', {}).get('sha') != expected_tree
+                    or [x.get('sha') for x in commit_read.get('parents', [])] != [binding.source_commit]
+                    or commit_read.get('message') != message):
+                raise TransportUnknown('COMMIT_WHOLEBYTE_READBACK_UNKNOWN')
+            status, tree_raw = self._api('GET', '/git/trees/' + expected_tree)
+            tree = _object(tree_raw, 65536)
+            entries = tree.get('tree')
+            if (status != 200 or tree.get('sha') != expected_tree or tree.get('truncated') is not False
+                    or type(entries) is not list or len(entries) != 1
+                    or entries[0].get('path') != 'reservation.json' or entries[0].get('type') != 'blob'
+                    or entries[0].get('mode') != '100644' or entries[0].get('sha') != blob_sha
+                    or entries[0].get('size') != len(expected_raw)):
+                raise TransportUnknown('TREE_WHOLE_READBACK_UNKNOWN')
+            status, blob_raw = self._api('GET', '/git/blobs/' + blob_sha)
+            blob = _object(blob_raw, 65536)
+            if (status != 200 or blob.get('encoding') != 'base64' or blob.get('sha') != blob_sha
+                    or blob.get('size') != len(expected_raw) or type(blob.get('content')) is not str):
+                raise TransportUnknown('BLOB_READBACK_UNKNOWN')
+            try:
+                actual_raw = base64.b64decode(blob['content'].replace('\n', ''), validate=True)
+            except (ValueError, base64.binascii.Error):
+                raise TransportUnknown('BLOB_ENCODING_UNKNOWN') from None
+            if actual_raw != expected_raw or _sha1_object('blob', actual_raw) != blob_sha:
+                raise TransportUnknown('RECORD_WHOLEBYTE_READBACK_UNKNOWN')
+            status, last_ref_raw = self._api('GET', suffix)
+            if status != 200 or last_ref_raw != first_ref_raw:
+                raise TransportUnknown('FINAL_REF_STABILITY_UNKNOWN')
+            self._private_outcome = record
+            self.state = 'SYNTHETIC_CREATE201_AND_DURABLE_READBACK_VERIFIED'
+            return self.metadata()
+        except TransportUnknown as error:
+            self._wire._retain('RESERVATION_UNKNOWN', error=error)
+            self._wire._unknown('RESERVATION_UNKNOWN', 'POST_RETURN')
+            self.state = 'UNKNOWN_NO_OAUTH_NO_RETRY'
+            raise
+        except IdentityRefused as error:
+            if (self._writes_started and self.state == 'ATTEMPTING_TEST_ONLY'
+                    and str(error) != 'REF_CREATE_REJECTED_EXISTENCE_UNPROVED'):
+                self._wire._retain('PROVIDER_PARSE_OR_BINDING_UNKNOWN', error=error)
+                self._wire._unknown('PROVIDER_PARSE_OR_BINDING_UNKNOWN', 'POST_RETURN')
+                self.state = 'UNKNOWN_NO_OAUTH_NO_RETRY'
+                raise TransportUnknown('RESERVATION_UNKNOWN') from None
+            if self.state == 'ATTEMPTING_TEST_ONLY':
+                self.state = 'REFUSED_NO_OAUTH'
+            raise
+        except Exception as error:
+            self._wire._retain('RESERVATION_PROTOCOL_EXCEPTION', error=error)
+            self._wire._unknown('PROTOCOL_EXCEPTION', 'POST_RETURN')
+            self.state = 'UNKNOWN_NO_OAUTH_NO_RETRY'
+            raise TransportUnknown('RESERVATION_UNKNOWN') from None
+
+    def metadata(self):
+        return {'scope': 'TEST_ONLY_GIT_RESERVATION_PROTOCOL', 'state': self.state,
+            'effect_key_sha256': self._effect_key, 'commit': self._commit,
+            'wire': self._wire.metadata() if self._wire else {'requests': 0},
+            'OAuth_calls': 0, 'GET_order_calls': 0, 'production_context': False,
+            'real_provider_durability_qualified': False, 'append_only_global': False,
+            'namespace_delete_update_protection': 'UNQUALIFIED'}
+
+
+if __name__ == '__main__':
+    raise IdentityRefused('AUTHENTIC_RUNTIME_BINDING_UNBOUND')
