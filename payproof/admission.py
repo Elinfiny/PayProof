@@ -18,7 +18,7 @@ OPERATIONS = frozenset({'orders:read', 'orders:create', 'webhooks:verify'})
 
 def source_fingerprint():
     root = Path(__file__).parent
-    names = ('admission.py', 'core.py', 'paypal.py', 'service.py')
+    names = ('admission.py', 'core.py', 'paypal.py', 'service.py', 'server.py')
     rows = [(name, hashlib.sha256((root/name).read_bytes()).hexdigest()) for name in names]
     return hashlib.sha256(canonical(rows).encode()).hexdigest()
 
