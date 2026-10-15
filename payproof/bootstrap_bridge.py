@@ -53,8 +53,18 @@ class BootstrapBridge:
     def __init__(self, runtime_binding=None):
         self._runtime_binding = None  # A JSON/callable/admitted flag cannot activate this candidate.
 
-    def activate(self, *args, **kwargs):
-        raise IdentityRefused('AUTHENTIC_RUNTIME_BINDING_UNBOUND')
+    def activate(self, token, job_token=None, order_id=None):
+        if type(self._runtime_binding) is not ConsumerProvider:
+            raise IdentityRefused('AUTHENTIC_RUNTIME_BINDING_UNBOUND')
+        self._runtime_binding.context.require(production=True)
+        return self._runtime_binding.consume(token,order_id)
+
+    @classmethod
+    def from_host(cls, job_token):
+        from .admission import load_consumer_context
+        context=load_consumer_context()
+        result=cls();result._runtime_binding=ConsumerProvider.from_host(context,job_token)
+        return result
 
     def inspect_for_test(self, token, *, policy, snapshot, now, source_binding,
                          actual_bundle_sha256, admission_source_sha256, credentials,
@@ -110,6 +120,7 @@ from .github_oidc import _FixedHTTPS, _TEST, _object, TransportUnknown
 
 _REPO = '/repos/Elinfiny/PayProof'
 _RESERVATION_TEST_SEAL = object()
+_RESERVATION_HOST_SEAL = object()
 
 
 def _canonical(value):
@@ -170,10 +181,14 @@ class GitRefReservation:
         result._job_token = 'TEST_ONLY_NOT_A_PROVIDER_CREDENTIAL'
         return result
 
-    def reserve_production(self, *args, **kwargs):
-        raise IdentityRefused('AUTHENTIC_RUNTIME_BINDING_UNBOUND')
+    def reserve_production(self, **kwargs):
+        if not hasattr(self,'_consumer_context') or self._consumer_context.test_only:
+            raise IdentityRefused('AUTHENTIC_RUNTIME_BINDING_UNBOUND')
+        self._consumer_context.require(production=True)
+        return self._reserve(**kwargs)
 
     def _api(self, method, suffix, payload=None):
+        if hasattr(self,'_consumer_context'): self._consumer_context.require(production=not self._consumer_context.test_only)
         if self._wall_clock() >= self._binding.identity.policy.expires_at:
             raise TransportUnknown('SOURCE_ABSOLUTE_DEADLINE')
         if method == 'POST':
@@ -187,9 +202,15 @@ class GitRefReservation:
             raise TransportUnknown('SOURCE_ABSOLUTE_DEADLINE')
         return status, raw
 
-    def reserve_for_test(self, *, caller_run_id, caller_run_attempt, grant_id, restart=False):
+    def reserve_for_test(self, **kwargs):
+        if hasattr(self,'_consumer_context') and not self._consumer_context.test_only:
+            raise IdentityRefused('TEST_ONLY_ENTRY_REFUSED')
+        return self._reserve(**kwargs)
+
+    def _reserve(self, *, caller_run_id, caller_run_attempt, grant_id, restart=False):
         binding = self._binding
-        if binding is None or binding._seal is not _RESERVATION_TEST_SEAL or self._wire is None:
+        expected_seal = _RESERVATION_HOST_SEAL if hasattr(self,'_consumer_context') and not self._consumer_context.test_only else _RESERVATION_TEST_SEAL
+        if binding is None or binding._seal is not expected_seal or self._wire is None:
             raise IdentityRefused('AUTHENTIC_RUNTIME_BINDING_UNBOUND')
         policy = binding.identity.policy
         if (self._consumed or restart is not False or caller_run_attempt != '1'
@@ -199,10 +220,11 @@ class GitRefReservation:
         self._consumed = True  # Never reset after failure, UNKNOWN or a new token.
         self.state = 'ATTEMPTING_TEST_ONLY'
         source = binding.source
-        key = hashlib.sha256((source.grant_id + ':' + source.order_id_sha256).encode()).hexdigest()
+        key = getattr(self,'_canonical_consumer_key',None) or hashlib.sha256((source.grant_id + ':' + source.order_id_sha256).encode()).hexdigest()
+        namespace = 'v2/' if hasattr(self,'_canonical_consumer_key') else 'v1/'
         self._effect_key = key
-        ref = 'refs/tags/payproof-reservations/v1/' + key
-        suffix = '/git/ref/tags/payproof-reservations/v1/' + key
+        ref = 'refs/tags/payproof-reservations/' + namespace + key
+        suffix = '/git/ref/tags/payproof-reservations/' + namespace + key
         record = {'schema': 'PAYPROOF_CONSUMED_RESERVATION_V1', 'state': 'CONSUMED_BEFORE_OAUTH',
             'repository_id': '1419908202', 'repository_owner_id': '273768139',
             'grant_id': source.grant_id, 'effect_key_sha256': key,
@@ -213,7 +235,7 @@ class GitRefReservation:
             'source_commit': binding.source_commit, 'source_tree': binding.source_tree,
             'run_id': policy.run_id, 'run_attempt': '1', 'absolute_deadline_epoch': policy.expires_at,
             'OAuth_allowances_consumed': 1, 'GET_allowances_consumed': 1,
-            'restart': 'REFUSE_ALL_EXISTING_RECORDS', 'scope': 'TEST_ONLY_TRANSPORT_MECHANICS'}
+            'restart': 'REFUSE_ALL_EXISTING_RECORDS', 'scope': 'SYNTHETIC_CONSUMER' if getattr(self,'_consumer_context',None) is not None and self._consumer_context.test_only else 'HOST_CONSUMER' if hasattr(self,'_consumer_context') else 'TEST_ONLY_TRANSPORT_MECHANICS'}
         expected_raw = _canonical(record)
         blob_sha = _sha1_object('blob', expected_raw)
         tree_body = b'100644 reservation.json\0' + bytes.fromhex(blob_sha)
@@ -292,6 +314,7 @@ class GitRefReservation:
             status, last_ref_raw = self._api('GET', suffix)
             if status != 200 or last_ref_raw != first_ref_raw:
                 raise TransportUnknown('FINAL_REF_STABILITY_UNKNOWN')
+            self._winning_ref_raw = last_ref_raw  # Exact accepted current winner, private.
             self._private_outcome = record
             self.state = 'SYNTHETIC_CREATE201_AND_DURABLE_READBACK_VERIFIED'
             return self.metadata()
@@ -327,3 +350,204 @@ class GitRefReservation:
 
 if __name__ == '__main__':
     raise IdentityRefused('AUTHENTIC_RUNTIME_BINDING_UNBOUND')
+
+
+# Concrete V3 consumer. Production factories are fixed; fakes stay TEST_ONLY.
+from .admission import ConsumerContext, canonical_effect_key
+from .github_oidc import _PROVIDER, _EVIDENCE, VerifiedIdentity, consumer_policy, FixedJWKSLoader
+import http.client
+_REGISTRY = object()
+
+class ConsumerRegistry:
+    def __init__(self, provider, seal):
+        if seal is not _REGISTRY: raise IdentityRefused('REGISTRY_PROVIDER_REQUIRED')
+        self.provider=provider;self.context=provider.context.context;self._seal=seal
+    def require_existing(self, context, order_id):
+        if self._seal is not _REGISTRY or context is not self.context:
+            raise IdentityRefused('REGISTRY_CONTEXT')
+        self.provider.reverify(order_id,consumed=True)
+
+class ConsumerProvider:
+    def __init__(self):
+        self.context=None;self._wire=None;self._jwks=None;self._job_token=None
+        self._used=False;self._reservation=None;self._driver=None;self._originals=[]
+        self._first_unknown=None;self._clock=time.monotonic;self._wall=time.time
+        self._immutable_registry_cache=None
+    @classmethod
+    def from_host(cls, context, job_token):
+        if type(context) is not ConsumerContext: raise IdentityRefused('V3_REQUIRED')
+        context.require(production=True)
+        if type(job_token) is not str or not 1<=len(job_token)<=4096: raise IdentityRefused('JOB_TOKEN_REQUIRED')
+        p=cls();p.context=context;p._job_token=job_token
+        seconds=min(300,context.context.expires_at.timestamp()-time.time())
+        p._wire=_FixedHTTPS(seconds=seconds,limit_calls=64,scope=_PROVIDER)
+        p._jwks=FixedJWKSLoader.from_host(context)
+        return p
+    @classmethod
+    def for_test(cls, context, factory, *, clock=time.monotonic):
+        if type(context) is not ConsumerContext or context.test_only is not True:
+            raise IdentityRefused('EXPLICIT_SYNTHETIC_V3_REQUIRED')
+        context.require();p=cls();p.context=context;p._clock=clock
+        seconds=min(300,context.context.expires_at.timestamp()-time.time())
+        p._wire=_FixedHTTPS(factory=factory,clock=clock,seconds=seconds,limit_calls=64,scope=_TEST)
+        p._jwks=FixedJWKSLoader.for_test(factory,clock=clock,seconds=seconds)
+        p._job_token='PUBLIC_SYNTHETIC_JOBTOKEN';return p
+    def _json_api(self,path):
+        self.context.require(production=not self.context.test_only)
+        status,raw=self._wire.exchange('GET','api.github.com',_REPO+path,
+            headers={'Accept':'application/vnd.github+json','Authorization':'Bearer '+self._job_token})
+        if status!=200: raise IdentityRefused('CURRENT_PROVIDER_READBACK_REQUIRED')
+        return _object(raw,65536)
+    def _blob_at(self,revision,path,digest):
+        commit=self._json_api('/git/commits/'+revision)
+        if commit.get('sha')!=revision: raise IdentityRefused('IMMUTABLE_REVISION')
+        tree=commit.get('tree',{}).get('sha')
+        for index,part in enumerate(path.split('/')):
+            body=self._json_api('/git/trees/'+tree)
+            if body.get('sha')!=tree or body.get('truncated') is not False or type(body.get('tree')) is not list:
+                raise IdentityRefused('COMPLETE_TREE_REQUIRED')
+            entries=[x for x in body['tree'] if x.get('path')==part]
+            if len(entries)!=1: raise IdentityRefused('PATH_MEMBERSHIP')
+            entry=entries[0]
+            if index<len(path.split('/'))-1:
+                if entry.get('type')!='tree': raise IdentityRefused('TREE_PATH')
+                tree=entry['sha']
+            elif entry.get('type')!='blob' or entry.get('mode')!='100644':
+                raise IdentityRefused('REGULAR_SOURCE_FILE_REQUIRED')
+        blob=self._json_api('/git/blobs/'+entry['sha'])
+        if blob.get('sha')!=entry['sha'] or blob.get('encoding')!='base64': raise IdentityRefused('BLOB_PROVENANCE')
+        try: raw=base64.b64decode(blob['content'].replace('\n',''),validate=True)
+        except Exception: raise IdentityRefused('BLOB_ENCODING') from None
+        if len(raw)!=blob.get('size') or len(raw)!=entry.get('size') or _sha1_object('blob',raw)!=entry['sha'] or hashlib.sha256(raw).hexdigest()!=digest:
+            raise IdentityRefused('WHOLE_IMMUTABLE_SOURCE_DIGEST')
+        return raw
+    def reverify(self,order_id,consumed=False):
+        g=self.context.require(production=not self.context.test_only);r=g['registry']
+        if type(order_id) is not str or re.fullmatch('[A-Z0-9]{1,36}',order_id) is None or hashlib.sha256(order_id.encode()).hexdigest()!=r['order_id_sha256']:
+            raise IdentityRefused('EXACT_EXISTING_ORDER')
+        # Cache only immutable observed registry bytes, bound to this exact sealed invocation.
+        cache_key=(self.context,g['bundle_sha256'],g['caller']['source_commit'],
+                   r['order_id_sha256'],r['revision'],r['path'],r['sha256'])
+        cache=self._immutable_registry_cache
+        if cache is not None:
+            if cache[0][0] is not self.context or cache[0][1:]!=cache_key[1:]:
+                raise IdentityRefused('IMMUTABLE_CACHE_BINDING')
+            registry_raw=cache[1]
+        else:
+            registry_raw=self._blob_at(r['revision'],r['path'],r['sha256'])
+        actual=_object(registry_raw,65536)
+        expected={'schema':'PAYPROOF_PREEXISTING_REGISTRY_V3','client_id_sha256':g['client_id_sha256'],
+            'order_id_sha256':r['order_id_sha256'],'canonical_effect_key_sha256':g['canonical_effect_key_sha256'],
+            'legacy_refs_sha256':r['legacy_refs_sha256'],'legacy_grant_ids':g['legacy_grant_ids']}
+        if set(actual)!=set(expected)|{'provenance'} or any(actual[k]!=v for k,v in expected.items()):
+            raise IdentityRefused('AUTHENTIC_REGISTRY_APP_OR_LINEAGE')
+        provenance=actual['provenance']
+        if (type(provenance) is not dict or set(provenance)!={'provider','environment','receipt_sha256'}
+                or provenance['provider']!='paypal' or provenance['environment']!='sandbox'
+                or re.fullmatch('[a-f0-9]{64}',str(provenance['receipt_sha256'])) is None):
+            raise IdentityRefused('PREEXISTING_PROVIDER_PROVENANCE')
+        if self._immutable_registry_cache is None:
+            self._immutable_registry_cache=(cache_key,registry_raw)
+        # NEVER cache dynamic lineage or winner. Query again before EVERY PayPal request.
+        # Read OLD namespace in full; an empty NEW namespace is never sufficient.
+        status,raw=self._wire.exchange('GET','api.github.com',_REPO+'/git/matching-refs/tags/payproof-reservations/v1/',
+            headers={'Authorization':'Bearer '+self._job_token})
+        self._originals.append(raw)
+        try: old=json.loads(raw)
+        except Exception: raise IdentityRefused('LEGACY_NAMESPACE_UNKNOWN') from None
+        if status!=200 or type(old) is not list or hashlib.sha256(_canonical(old)).hexdigest()!=r['legacy_refs_sha256'] or old:
+            # Conservative: any old record, including unrelated/unparsed state, stops.
+            raise IdentityRefused('LEGACY_RECORD_OR_UNKNOWN_REFUSED')
+        for legacy in g['legacy_grant_ids']:
+            key=hashlib.sha256((legacy+':'+r['order_id_sha256']).encode()).hexdigest()
+            status,raw=self._wire.exchange('GET','api.github.com',_REPO+'/git/ref/tags/payproof-reservations/v1/'+key,
+                headers={'Authorization':'Bearer '+self._job_token})
+            if status!=404: raise IdentityRefused('KNOWN_OLD_EFFECT_REFUSED')
+        if consumed:
+            if self._reservation is None or self._reservation.state!='SYNTHETIC_CREATE201_AND_DURABLE_READBACK_VERIFIED':
+                raise IdentityRefused('CONSUMED_RESERVATION_REQUIRED')
+            status,raw=self._wire.exchange('GET','api.github.com',
+                _REPO+'/git/ref/tags/payproof-reservations/v2/'+g['canonical_effect_key_sha256'],
+                headers={'Authorization':'Bearer '+self._job_token})
+            if status!=200 or raw!=self._reservation._winning_ref_raw:
+                raise IdentityRefused('CONSUMED_WINNER_READBACK_CHANGED_OR_UNKNOWN')
+            ref=_object(raw,65536)
+            if (ref.get('ref')!='refs/tags/payproof-reservations/v2/'+g['canonical_effect_key_sha256']
+                    or ref.get('object',{}).get('sha')!=self._reservation._commit
+                    or ref.get('object',{}).get('type')!='commit'):
+                raise IdentityRefused('CONSUMED_RECORD_CHANGED')
+    def _caller(self,identity):
+        g=self.context.grant;c=g['caller']
+        if (identity._seal is not _EVIDENCE or identity.test_only is not self.context.test_only
+                or identity._claims.get('actor')!='Elinfiny' or identity._claims.get('actor_id')!='273768139'):
+            raise IdentityRefused('AUTHENTIC_OWNER_CALLER')
+        repo=self._json_api('')
+        if repo.get('id')!=1419908202 or repo.get('private') is not True or repo.get('fork') is not False or repo.get('owner',{}).get('id')!=273768139:
+            raise IdentityRefused('SAME_NONFORK_PRIVATE_REPO')
+        source=self._json_api('/git/commits/'+c['source_commit'])
+        if source.get('sha')!=c['source_commit'] or source.get('tree',{}).get('sha')!=c['source_tree']:
+            raise IdentityRefused('IMMUTABLE_SOURCE_COMMIT_TREE')
+        main=self._json_api('/branches/main')
+        if main.get('commit',{}).get('sha')!=c['source_commit']: raise IdentityRefused('CURRENT_MAIN_DRIFT')
+        self._blob_at(c['source_commit'],c['workflow_path'],c['workflow_sha256'])
+        for row in g['bundle_manifest']:
+            self._blob_at(c['source_commit'],row['path'],row['sha256'])
+        run=self._json_api('/actions/runs/'+c['run_id'])
+        if (str(run.get('id'))!=c['run_id'] or str(run.get('run_attempt'))!='1'
+                or run.get('head_sha')!=c['source_commit'] or run.get('event')!='workflow_dispatch'
+                or run.get('actor',{}).get('id')!=273768139 or run.get('head_repository',{}).get('fork') is not False):
+            raise IdentityRefused('CURRENT_RUN_ACTOR_SOURCE')
+        jobs=self._json_api('/actions/runs/'+c['run_id']+'/attempts/1/jobs')
+        rows=jobs.get('jobs')
+        if (jobs.get('total_count')!=1 or type(rows) is not list or len(rows)!=1
+                or str(rows[0].get('id'))!=c['job_id'] or rows[0].get('name')!=c['job_name']
+                or str(rows[0].get('run_id'))!=c['run_id'] or rows[0].get('head_sha')!=c['source_commit']):
+            raise IdentityRefused('SOLE_PINNED_JOB_REQUIRED')
+        # No invented job_id JWT claim. Single-job workflow source+signed run+native job readback.
+    def consume(self,token,order_id,restart=False):
+        if self.context is None: raise IdentityRefused('UNBOUND')
+        if self._used or restart is not False: raise IdentityRefused('RESTART_REFUSED')
+        self._used=True
+        try:
+            g=self.context.require(production=not self.context.test_only);now=int(time.time())
+            if self.context.test_only:
+                snapshot=self._jwks.fetch_for_test(observed_at=now,now=now)
+                identity=GitHubOIDCVerifier().verify_for_test(token,policy=consumer_policy(g),snapshot=snapshot,now=now)
+            else:
+                identity=GitHubOIDCVerifier(self.context,self._jwks).verify_production(token,now=now)
+            self._caller(identity);self.reverify(order_id)
+            source=SourceBinding(g['admission_id'],g['bundle_sha256'],g['source_sha256'],
+                g['client_id_sha256'],g['registry']['order_id_sha256'],g['registry']['sha256'])
+            r=GitRefReservation();r._binding=_ReservationBinding(source,identity,g['caller']['source_commit'],g['caller']['source_tree'],_RESERVATION_TEST_SEAL if self.context.test_only else _RESERVATION_HOST_SEAL)
+            r._consumer_context=self.context;r._canonical_consumer_key=g['canonical_effect_key_sha256'];r._wall_clock=time.time
+            r._job_token=self._job_token;r._wire=_FixedHTTPS(factory=self._wire._factory,clock=self._clock,
+                seconds=min(300,self.context.context.expires_at.timestamp()-time.time()),limit_calls=10,
+                scope=_TEST if self.context.test_only else _PROVIDER)
+            self._reservation=r
+            args={'caller_run_id':g['caller']['run_id'],'caller_run_attempt':'1','grant_id':g['admission_id']}
+            if self.context.test_only: r.reserve_for_test(**args)
+            else: r.reserve_production(**args)
+            from tools.read_pilot_driver import ReadPilotDriver
+            self._driver=ReadPilotDriver.from_consumer(self.context,ConsumerRegistry(self,_REGISTRY),self)
+            return self._driver.run(order_id)
+        except Exception as error:
+            self._originals.append(error)
+            if self._first_unknown is None:
+                for wire in (self._jwks._wire,self._wire,getattr(self._reservation,'_wire',None)):
+                    if wire is not None and wire.first_unknown is not None:
+                        self._first_unknown=dict(wire.first_unknown);break
+            raise IdentityRefused('CONSUMER_UNKNOWN' if self._first_unknown else 'CONSUMER_REFUSED') from None
+    def paypal(self,method,path,headers,body):
+        # Called by the bound driver's in-flight endpoint/allowance boundary only.
+        d=self._driver
+        if (d is None or d._context is not self.context.context or d._registry.provider is not self
+                or d._boundary.in_flight is not True or d._first_unknown is not None):
+            raise IdentityRefused('BOUND_IN_FLIGHT_CONSUMER_REQUIRED')
+        expected=('POST','/v1/oauth2/token') if d._reserved==1 else (
+            ('GET','/v2/checkout/orders/'+d._order_id) if d._reserved==2 else None)
+        if (method,path)!=expected: raise IdentityRefused('FIXED_PAYPAL_ALLOWANCE_ROUTE')
+        self.reverify(d._order_id,consumed=True)
+        self.context.require(production=not self.context.test_only)
+        status,raw=self._wire.exchange(method,'api-m.sandbox.paypal.com',path,headers=headers,body=body)
+        if status!=200: raise TransportUnknown('PAYPAL_STATUS_UNKNOWN')
+        return _object(raw,65536)

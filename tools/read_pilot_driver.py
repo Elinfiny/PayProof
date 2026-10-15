@@ -9,6 +9,7 @@ from payproof.core import InvalidData, UnknownResult
 from payproof.paypal import BASE, SandboxPayPal
 
 _TEST_BINDING = object()
+_CONSUMER_BINDING = object()
 _TOKEN_PATH = '/v1/oauth2/token'
 
 
@@ -153,7 +154,7 @@ class ReadPilotDriver:
 
     def run(self, order_id):
         # No callable, JSON, flag, PID or locally signed HMAC can activate production.
-        if self._binding is not _TEST_BINDING:
+        if self._binding not in (_TEST_BINDING,_CONSUMER_BINDING):
             raise InvalidData('Production verifier, grant and custody are unbound')
         if self._consumed:
             return self.export(repeat_refused=True)
@@ -161,7 +162,8 @@ class ReadPilotDriver:
         try:
             if not isinstance(order_id, str) or not re.fullmatch(r'[A-Z0-9]{1,36}', order_id):
                 raise InvalidData('Fixed sandbox order identifier required')
-            self._registry.require_existing(self._context, order_id)
+            if self._binding is _TEST_BINDING:
+                self._registry.require_existing(self._context, order_id)
             self._order_id = order_id
             self._order_hash = hashlib.sha256(order_id.encode()).hexdigest()
             self._context.require('orders:read')
@@ -192,7 +194,7 @@ class ReadPilotDriver:
         status = 'UNKNOWN' if self._first_unknown is not None else (
             'REFUSED' if self._refusal is not None else
             'SYNTHETIC_RETURNED' if self._returned else 'UNBOUND')
-        return {'scope': 'SYNTHETIC_MECHANICS_ONLY', 'status': status,
+        return {'scope': 'SYNTHETIC_MECHANICS_ONLY' if self._context is None or self._context.test_only else 'HOST_CONSUMER_READ', 'status': status,
                 'production_verifier_active': False, 'real_runtime_admitted': False,
                 'allowances_reserved': self._reserved, 'transport_calls': self._invoked,
                 'attempt_limit': 2, 'OAuth_limit': 1, 'GET_limit': 1, 'retries': 0,
@@ -202,3 +204,19 @@ class ReadPilotDriver:
                 'refusal': dict(self._refusal) if self._refusal else None,
                 'events': [dict(event) for event in self._events],
                 'backend_cancellation': 'NOT_CLAIMED'}
+
+
+def _from_consumer(cls, context, registry, provider):
+    from payproof.admission import ConsumerContext
+    from payproof.bootstrap_bridge import ConsumerRegistry, ConsumerProvider, _REGISTRY
+    if (type(context) is not ConsumerContext or type(registry) is not ConsumerRegistry
+            or registry._seal is not _REGISTRY or type(provider) is not ConsumerProvider
+            or registry.provider is not provider or provider.context is not context):
+        raise InvalidData('AUTHENTIC_CONSUMER_CHAIN_REQUIRED')
+    context.require(production=not context.test_only)
+    driver=cls(clock=provider._clock);driver._binding=_CONSUMER_BINDING
+    driver._context=context.context;driver._registry=registry
+    driver._boundary=_Boundary(driver,provider.paypal,BASE)
+    return driver
+
+ReadPilotDriver.from_consumer=classmethod(_from_consumer)

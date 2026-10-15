@@ -106,6 +106,8 @@ def _verify_receipt(receipt_raw, trust_key, credentials_raw, *, test_only=False)
     expected = hmac.new(trust_key, canonical(grant).encode(), hashlib.sha256).hexdigest()
     if not hmac.compare_digest(signature, expected):
         raise InvalidData('Host admission signature mismatch')
+    if grant.get('schema') == 'PAYPROOF_SANDBOX_READ_CONSUMER_ADMISSION_V3':
+        return _verify_consumer_v3(grant, credentials_raw, test_only=test_only)
     if grant.get('schema') == 'PAYPROOF_SANDBOX_READ_ADMISSION_V2':
         return _verify_read_grant_v2(grant, credentials_raw, test_only=test_only)
     required = {'schema','admission_id','project','environment','source_sha256','expires_at','operations',
@@ -162,3 +164,113 @@ def load_host_context():
     key = _host_file(TRUST_KEY_PATH,256)
     credentials = _host_file(CREDENTIAL_PATH,16384)
     return _verify_receipt(receipt,key,credentials)
+
+
+# V3 extends the SAME authenticated fixed-host boundary. No issuer/key is shipped.
+_V3_SEAL = object()
+V3_SCHEMA = 'PAYPROOF_SANDBOX_READ_CONSUMER_ADMISSION_V3'
+V3_PATHS = ('payproof/admission.py', 'payproof/core.py', 'payproof/paypal.py',
+            'payproof/service.py', 'payproof/server.py', 'payproof/github_oidc.py',
+            'payproof/bootstrap_bridge.py', 'tools/read_pilot_driver.py')
+V3_AUDIENCE = 'urn:payproof:orders-read:consumer-v3'
+
+def runtime_manifest():
+    root = Path(__file__).parent.parent
+    rows=[]
+    for path in V3_PATHS:
+        raw=(root/path).read_bytes()
+        rows.append({'path':path,'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest()})
+    return rows
+
+def _digest(value, length=64):
+    import re
+    if type(value) is not str or re.fullmatch('[a-f0-9]{'+str(length)+'}',value) is None:
+        raise InvalidData('V3_DIGEST')
+    return value
+
+def canonical_effect_key(client_id_sha256, order_id_sha256):
+    return hashlib.sha256(canonical(['PayProof','sandbox','1419908202',
+        _digest(client_id_sha256),_digest(order_id_sha256),'orders:read']).encode()).hexdigest()
+
+@dataclass(frozen=True, repr=False)
+class ConsumerContext:
+    context: SandboxContext = field(repr=False)
+    _grant_raw: bytes = field(repr=False)
+    _seal: object = field(repr=False)
+    test_only: bool
+
+    @property
+    def grant(self):
+        if self._seal is not _V3_SEAL: raise InvalidData('V3_SEAL')
+        return _json(self._grant_raw)  # Detached copy, callers cannot mutate authority.
+
+    def require(self, production=False):
+        if (type(self) is not ConsumerContext or self._seal is not _V3_SEAL
+                or type(self.context) is not SandboxContext
+                or self.context.test_only is not self.test_only
+                or (production and self.test_only)):
+            raise InvalidData('V3_AUTHENTIC_CONTEXT_REQUIRED')
+        self.context.require('orders:read')
+        g=self.grant
+        if self.context.operations != frozenset({'orders:read'}) or runtime_manifest()!=g['bundle_manifest']:
+            raise InvalidData('V3_RUNTIME_SOURCE_CHANGED')
+        return g
+
+def _verify_consumer_v3(g, credentials_raw, *, test_only):
+    # Called only AFTER the shared HMAC verification; test flag never grants production.
+    import re
+    base={'schema','admission_id','project','environment','source_sha256','expires_at',
+          'operations','client_id_sha256','external_budget_usd','live_ai'}
+    if set(g)!=base|{'bundle_manifest','bundle_sha256','caller','registry',
+                    'canonical_effect_key_sha256','legacy_grant_ids'}:
+        raise InvalidData('V3_EXACT_KEYS')
+    if g['schema']!=V3_SCHEMA: raise InvalidData('V3_SCHEMA')
+    manifest=runtime_manifest()
+    if (type(g['bundle_manifest']) is not list or g['bundle_manifest']!=manifest
+            or _digest(g['bundle_sha256'])!=hashlib.sha256(canonical(manifest).encode()).hexdigest()):
+        raise InvalidData('V3_MANIFEST')
+    # Retain V2 checks unchanged: authenticate current five-file hash and exact credentials.
+    narrow={k:g[k] for k in base};narrow['schema']='PAYPROOF_SANDBOX_READ_ADMISSION_V2'
+    ctx=_verify_read_grant_v2(narrow,credentials_raw,test_only=test_only)
+    c=g['caller'];fields={'repository_id','owner_id','actor','actor_id','fork','visibility',
+        'source_commit','source_tree','workflow_path','workflow_sha256','run_id','job_id',
+        'job_name','attempt','ref','event','issuer','audience','not_before'}
+    if type(c) is not dict or set(c)!=fields: raise InvalidData('V3_CALLER_KEYS')
+    fixed={'repository_id':'1419908202','owner_id':'273768139','actor':'Elinfiny',
+        'actor_id':'273768139','fork':False,'visibility':'private',
+        'workflow_path':'.github/workflows/payproof-read-pilot.yml','job_name':'read_only',
+        'attempt':'1','ref':'refs/heads/main','event':'workflow_dispatch',
+        'issuer':'https://token.actions.githubusercontent.com','audience':V3_AUDIENCE}
+    if any(type(c[k]) is not type(v) or c[k]!=v for k,v in fixed.items()):
+        raise InvalidData('V3_CALLER_SCOPE')
+    for k in ('source_commit','source_tree'): _digest(c[k],40)
+    _digest(c['workflow_sha256'])
+    if any(type(c[k]) is not str or re.fullmatch('[1-9][0-9]{0,19}',c[k]) is None for k in ('run_id','job_id')):
+        raise InvalidData('V3_RUN_JOB')
+    expiry=int(ctx.expires_at.timestamp())
+    if type(c['not_before']) is not int or not c['not_before']<=datetime.now(timezone.utc).timestamp()<expiry or not 0<expiry-c['not_before']<=300:
+        raise InvalidData('V3_ABSOLUTE_WINDOW')
+    r=g['registry']
+    if type(r) is not dict or set(r)!={'provider','revision','path','sha256','order_id_sha256','legacy_refs_sha256'} or r['provider']!='github' or r['path']!='payproof-orders-registry.json':
+        raise InvalidData('V3_REGISTRY_SCOPE')
+    _digest(r['revision'],40)
+    for k in ('sha256','order_id_sha256','legacy_refs_sha256'): _digest(r[k])
+    ids=g['legacy_grant_ids']
+    if (type(ids) is not list or len(ids)>32 or any(type(x) is not str or re.fullmatch('[A-Za-z0-9_-]{1,128}',x) is None for x in ids) or ids!=sorted(set(ids))):
+        raise InvalidData('V3_LEGACY_LINEAGE')
+    if g['canonical_effect_key_sha256']!=canonical_effect_key(g['client_id_sha256'],r['order_id_sha256']):
+        raise InvalidData('V3_CANONICAL_EFFECT')
+    return ConsumerContext(ctx,canonical(g).encode(),_V3_SEAL,test_only)
+
+def verify_consumer_for_test(receipt_raw, public_fixture_key, credentials_raw):
+    result=_verify_receipt(receipt_raw,public_fixture_key,credentials_raw,test_only=True)
+    if type(result) is not ConsumerContext: raise InvalidData('V3_REQUIRED')
+    result.require()
+    return result
+
+def load_consumer_context():
+    # Same three fixed paths and real HMAC loader; never a browser path or callback.
+    result=load_host_context()
+    if type(result) is not ConsumerContext: raise InvalidData('V3_REQUIRED')
+    result.require(production=True)
+    return result

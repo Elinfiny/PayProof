@@ -20,6 +20,7 @@ REPOSITORY = 'Elinfiny/PayProof'
 REPOSITORY_ID = '1419908202'
 OWNER_ID = '273768139'
 _TEST = object()
+_PROVIDER = object()
 _EVIDENCE = object()
 
 
@@ -134,11 +135,23 @@ class GitHubOIDCVerifier:
         self._binding, self._key_source = binding, key_source
 
     def verify_production(self, token, *, now):
-        # No JSON/callback/HMAC can fill the absent reviewed provider adapter.
-        _reject('AUTHENTIC_RUNTIME_BINDING_UNBOUND')
+        from .admission import ConsumerContext
+        if type(self._binding) is not ConsumerContext:
+            _reject('AUTHENTIC_RUNTIME_BINDING_UNBOUND')
+        g=self._binding.require(production=True)
+        if type(self._key_source) is not FixedJWKSLoader or self._key_source._binding is not self._binding:
+            _reject('AUTHENTIC_JWKS_PROVIDER_REQUIRED')
+        snapshot=self._key_source.fetch_production(observed_at=now,now=now)
+        identity=self._verify(token,policy=consumer_policy(g),snapshot=snapshot,now=now,test_only=False)
+        if identity._claims.get('actor')!='Elinfiny' or identity._claims.get('actor_id')!=OWNER_ID:
+            _reject('OWNER_ACTOR_REQUIRED')
+        return identity
 
     def verify_for_test(self, token, *, policy, snapshot, now):
-        if type(policy) is not IdentityPolicy or type(snapshot) is not JWKSSnapshot or snapshot._seal is not _TEST:
+        return self._verify(token,policy=policy,snapshot=snapshot,now=now,test_only=True)
+
+    def _verify(self, token, *, policy, snapshot, now, test_only):
+        if type(policy) is not IdentityPolicy or type(snapshot) is not JWKSSnapshot or snapshot._seal is not (_TEST if test_only else _PROVIDER):
             _reject('TYPED_TEST_INPUT_REQUIRED')
         if snapshot.origin != ISSUER or snapshot.url != JWKS_URL:
             _reject('JWKS_ORIGIN')
@@ -204,7 +217,7 @@ class GitHubOIDCVerifier:
         if type(claims.get('jti')) is not str or not 1 <= len(claims['jti']) <= 256:
             _reject('JTI_REQUIRED')
         # job_workflow_ref is optional/reusable-workflow-specific; no invented job claim.
-        return VerifiedIdentity(MappingProxyType(claims), _EVIDENCE, policy)
+        return VerifiedIdentity(MappingProxyType(claims), _EVIDENCE, policy, test_only)
 
 
 def require_test_evidence(identity):
@@ -240,7 +253,7 @@ class _FixedHTTPS:
     """
     def __init__(self, *, factory=None, clock=time.monotonic, seconds=300, limit_calls=1, scope=None):
         if (type(seconds) not in (int, float) or not math.isfinite(seconds) or not 0 < seconds <= 300
-                or type(limit_calls) is not int or not 1 <= limit_calls <= 10):
+                or type(limit_calls) is not int or not 1 <= limit_calls <= 64):
             _reject('BOUNDED_TRANSPORT_BUDGET_REQUIRED')
         self._factory = factory if factory is not None else http.client.HTTPSConnection
         self._clock, self._scope = clock, scope
@@ -378,11 +391,11 @@ class _FixedHTTPS:
         self._guard('POST_RETURN_CLEANUP', 'CLOSE', cleanup=True)
 
     def exchange(self, method, host, path, *, body=None, headers=None, limit=65536):
-        if self._scope is not _TEST or not callable(self._factory):
+        if self._scope not in (_TEST, _PROVIDER) or not callable(self._factory) or (self._scope is _PROVIDER and self._factory is not http.client.HTTPSConnection):
             _reject('AUTHENTIC_RUNTIME_BINDING_UNBOUND')
         if self.first_unknown is not None or self.calls >= self._limit_calls:
             _reject('NO_RETRY_OR_FALLBACK')
-        if (host not in {'token.actions.githubusercontent.com', 'api.github.com'}
+        if (host not in {'token.actions.githubusercontent.com', 'api.github.com', 'api-m.sandbox.paypal.com'}
                 or type(path) is not str or not path.startswith('/')
                 or any(c in path for c in ('\r', '\n', '?', '#', '://'))
                 or method not in {'GET', 'POST'} or limit != 65536):
@@ -443,8 +456,24 @@ class FixedJWKSLoader:
                                   seconds=seconds, limit_calls=1, scope=_TEST)
         return loader
 
-    def fetch_production(self, *args, **kwargs):
-        _reject('AUTHENTIC_RUNTIME_BINDING_UNBOUND')
+    @classmethod
+    def from_host(cls, context):
+        from .admission import ConsumerContext
+        if type(context) is not ConsumerContext: _reject('V3_REQUIRED')
+        g=context.require(production=True)
+        loader=cls();loader._binding=context
+        loader._wire=_FixedHTTPS(seconds=min(300,context.context.expires_at.timestamp()-time.time()),scope=_PROVIDER)
+        return loader
+
+    def fetch_production(self, *, observed_at, now):
+        if self._binding is None or self._consumed: _reject('AUTHENTIC_RUNTIME_BINDING_UNBOUND')
+        self._binding.require(production=True)
+        if type(now) is not int or observed_at!=now: _reject('JWKS_FRESHNESS')
+        self._consumed=True
+        status,raw=self._wire.exchange('GET','token.actions.githubusercontent.com','/.well-known/jwks',headers={'Accept':'application/json'})
+        if status!=200: _reject('JWKS_STATUS_NO_REDIRECT')
+        _object(raw,65536)
+        return JWKSSnapshot(raw,observed_at,_PROVIDER)
 
     def fetch_for_test(self, *, observed_at, now):
         if self._wire is None or self._consumed:
@@ -465,3 +494,12 @@ class FixedJWKSLoader:
 
     def metadata(self):
         return self._wire.metadata() if self._wire else {'scope': 'UNBOUND', 'requests': 0}
+
+
+def consumer_policy(grant):
+    from datetime import datetime
+    c=grant['caller']
+    return IdentityPolicy(c['audience'],REPOSITORY+'/'+c['workflow_path']+'@refs/heads/main',
+        c['ref'],c['source_commit'],c['source_commit'],c['event'],
+        'repo:Elinfiny@273768139/PayProof@1419908202:ref:refs/heads/main',
+        c['run_id'],'1',c['not_before'],int(datetime.fromisoformat(grant['expires_at'].replace('Z','+00:00')).timestamp()))
