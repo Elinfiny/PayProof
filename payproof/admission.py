@@ -48,7 +48,7 @@ class SandboxContext:
     operations: frozenset
     client_id: str = field(repr=False)
     client_secret: str = field(repr=False)
-    webhook_id: str = field(repr=False)
+    webhook_id: str | None = field(repr=False)
     test_only: bool = field(repr=False)
     _seal: object = field(repr=False)
 
@@ -65,6 +65,35 @@ class SandboxContext:
             raise InvalidData('Admitted source differs from the running source')
 
 
+def _verify_read_grant_v2(grant, credentials_raw, *, test_only):
+    """Read-only profile, reached only after the common host HMAC verification."""
+    required = {'schema','admission_id','project','environment','source_sha256','expires_at','operations',
+                'client_id_sha256','external_budget_usd','live_ai'}
+    if set(grant) != required or grant['schema'] != 'PAYPROOF_SANDBOX_READ_ADMISSION_V2' or grant['project'] != 'PayProof' or grant['environment'] != 'sandbox':
+        raise InvalidData('Wrong read-only host scope')
+    if grant['external_budget_usd'] != '0.00' or grant['live_ai'] is not False:
+        raise InvalidData('This sandbox context does not authorize spending or live AI')
+    if type(grant['operations']) is not list or grant['operations'] != ['orders:read']:
+        raise InvalidData('Exclusive orders:read scope required')
+    try:
+        expires = datetime.fromisoformat(grant['expires_at'].replace('Z','+00:00'))
+    except (ValueError, AttributeError):
+        raise InvalidData('Host expiry missing') from None
+    if expires.tzinfo is None or datetime.now(timezone.utc) >= expires:
+        raise InvalidData('Host admission expired')
+    if grant['source_sha256'] != source_fingerprint():
+        raise InvalidData('Host source binding mismatch')
+    credentials = _json(credentials_raw)
+    if set(credentials) != {'client_id','client_secret'} or any(not isinstance(v,str) or not v or len(v)>4096 for v in credentials.values()):
+        raise InvalidData('Read-only sandbox custody incomplete')
+    if hashlib.sha256(credentials['client_id'].encode()).hexdigest() != grant['client_id_sha256']:
+        raise InvalidData('Sandbox application/custody binding mismatch')
+    if not isinstance(grant['admission_id'], str) or not grant['admission_id'] or len(grant['admission_id'])>128:
+        raise InvalidData('Host admission identity missing')
+    return SandboxContext(grant['admission_id'],grant['source_sha256'],expires,frozenset({'orders:read'}),
+                          credentials['client_id'],credentials['client_secret'],None,test_only,_SEAL)
+
+
 def _verify_receipt(receipt_raw, trust_key, credentials_raw, *, test_only=False):
     """Internal verifier. Production key comes only from the fixed host file loader."""
     envelope = _json(receipt_raw)
@@ -77,6 +106,8 @@ def _verify_receipt(receipt_raw, trust_key, credentials_raw, *, test_only=False)
     expected = hmac.new(trust_key, canonical(grant).encode(), hashlib.sha256).hexdigest()
     if not hmac.compare_digest(signature, expected):
         raise InvalidData('Host admission signature mismatch')
+    if grant.get('schema') == 'PAYPROOF_SANDBOX_READ_ADMISSION_V2':
+        return _verify_read_grant_v2(grant, credentials_raw, test_only=test_only)
     required = {'schema','admission_id','project','environment','source_sha256','expires_at','operations',
                 'client_id_sha256','webhook_id','external_budget_usd','live_ai'}
     if set(grant) != required or grant['schema'] != 'PAYPROOF_SANDBOX_ADMISSION_V1' or grant['project'] != 'PayProof' or grant['environment'] != 'sandbox':
