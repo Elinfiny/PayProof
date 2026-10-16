@@ -1,0 +1,66 @@
+name: PayProof public runner context evidence46
+on:
+  workflow_dispatch:
+    inputs:
+      admission_id:
+        description: Fixed public admission nonce
+        required: true
+        type: string
+      expected_head:
+        description: Exact reviewed merge commit SHA
+        required: true
+        type: string
+permissions: {}
+jobs:
+  context_evidence46:
+    if: >-
+      ${{ github.actor == 'Elinfiny' && github.actor_id == '273768139' && github.repository_id == '1419908202' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && inputs.admission_id == 'PAYPROOF-CONTEXT46-METADATA-20261016-ONCE' && github.sha == inputs.expected_head }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    steps:
+      - name: Emit bounded public context metadata
+        run: |
+          python3 -I -B <<'PY_CONTEXT46'
+          import json
+          import os
+          import re
+
+          ALLOWLIST = (
+              'GITHUB_REPOSITORY', 'GITHUB_REPOSITORY_ID', 'GITHUB_REPOSITORY_OWNER',
+              'GITHUB_REPOSITORY_OWNER_ID', 'GITHUB_ACTOR', 'GITHUB_ACTOR_ID',
+              'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT', 'GITHUB_SHA', 'GITHUB_REF',
+              'GITHUB_EVENT_NAME', 'GITHUB_JOB',
+          )
+          metadata = {name: os.environ.get(name) for name in ALLOWLIST}
+          expected = {
+              'GITHUB_REPOSITORY': 'Elinfiny/PayProof',
+              'GITHUB_REPOSITORY_ID': '1419908202',
+              'GITHUB_REPOSITORY_OWNER': 'Elinfiny',
+              'GITHUB_REPOSITORY_OWNER_ID': '273768139',
+              'GITHUB_ACTOR': 'Elinfiny',
+              'GITHUB_ACTOR_ID': '273768139',
+              'GITHUB_RUN_ATTEMPT': '1',
+              'GITHUB_REF': 'refs/heads/main',
+              'GITHUB_EVENT_NAME': 'workflow_dispatch',
+              'GITHUB_JOB': 'context_evidence46',
+          }
+          if any(metadata[name] != value for name, value in expected.items()):
+              raise ValueError('PUBLIC_CONTEXT_BOUNDARY_MISMATCH')
+          if re.fullmatch(r'[1-9][0-9]*', metadata['GITHUB_RUN_ID'] or '') is None:
+              raise ValueError('NUMERIC_PROVIDER_RUN_ID_REQUIRED')
+          if re.fullmatch(r'[0-9a-f]{40}', metadata['GITHUB_SHA'] or '') is None:
+              raise ValueError('FULL_COMMIT_SHA_REQUIRED')
+          payload = {
+              'schema': 'PAYPROOF_NATIVE_CONTEXT46_METADATA_ONLY',
+              'metadata': metadata,
+              'classification': 'INCOMPLETE_NOT_AUTHORITY',
+              'native_policy_issued': False,
+              'protected_input_used': False,
+              'PayPalHTTP': 0,
+              'model': 0,
+          }
+          line = json.dumps(payload, ensure_ascii=True, sort_keys=True, separators=(',', ':'))
+          if len(line.encode('utf-8')) + 1 > 4096:
+              raise ValueError('PUBLIC_JSON_LINE_BOUND')
+          print(line)
+          PY_CONTEXT46
