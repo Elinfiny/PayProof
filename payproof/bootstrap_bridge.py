@@ -551,3 +551,74 @@ class ConsumerProvider:
         status,raw=self._wire.exchange(method,'api-m.sandbox.paypal.com',path,headers=headers,body=body)
         if status!=200: raise TransportUnknown('PAYPAL_STATUS_UNKNOWN')
         return _object(raw,65536)
+
+
+# Private inactive job-native extension36; legacy prefix unchanged.
+
+class JobNativeProvider(ConsumerProvider):
+    """Separate private typed path; genuine policy/credentials are unbound."""
+    @classmethod
+    def from_native(cls,*,policy=None,job_token=None,lifetime=None):
+        from .admission import JobPolicyEvidence
+        from .github_oidc import SharedJobHTTPS,JobLifetime
+        if type(policy) is not JobPolicyEvidence:raise IdentityRefused('AUTHENTIC_JOB_POLICY_UNBOUND')
+        policy.require(production=True)
+        if type(lifetime) is not JobLifetime or type(job_token) is not str or not 0<len(job_token)<=4096:
+            raise IdentityRefused('GENUINE_JOB_INPUTS_UNBOUND')
+        p=cls();p.context=policy;p.lifetime=lifetime;p._job_token=job_token
+        p._wire=SharedJobHTTPS(lifetime,scope=_PROVIDER);p._source_identity=None
+        return p
+    @classmethod
+    def synthetic(cls,policy,factory,lifetime):
+        from .admission import JobPolicyEvidence
+        from .github_oidc import SharedJobHTTPS
+        if type(policy) is not JobPolicyEvidence or not policy.test_only:raise IdentityRefused('EXACT_SYNTHETIC_JOB_POLICY')
+        policy.require();p=cls();p.context=policy;p.lifetime=lifetime;p._clock=lifetime.clock
+        p._job_token='PUBLIC_SYNTHETIC_JOB_TOKEN';p._wire=SharedJobHTTPS(lifetime,factory=factory,scope=_TEST)
+        p._source_identity=None;return p
+    def bind(self,token,credentials,*,now):
+        from .github_oidc import NativeOIDCVerifier
+        from .admission import _context_from_verified_job,JobCredentials
+        if type(credentials) is not JobCredentials:raise IdentityRefused('JOB_CREDENTIALS_UNBOUND')
+        if getattr(self,'_bootstrap_used',False):raise IdentityRefused('JOB_BOOTSTRAP_ONCE')
+        self._bootstrap_used=True
+        policy=self.context
+        if policy.test_only:
+            status,raw=self._wire.exchange('GET','token.actions.githubusercontent.com','/.well-known/jwks',headers={'Accept':'application/json'})
+            if status!=200:raise IdentityRefused('JWKS_STATUS')
+            identity=NativeOIDCVerifier().verify_test(token,policy=policy.policy,raw_jwks=raw,now=now,lifetime=self.lifetime)
+        else:identity=NativeOIDCVerifier().verify_native(token,authority=policy,wire=self._wire,now=now)
+        self.lifetime.invoke('SOURCE_PROVIDER_CHECKS',lambda:ConsumerProvider._caller(self,identity))
+        self._source_identity=identity
+        self.context=_context_from_verified_job(policy,identity,self,credentials)
+        return self.context
+    def consume_native(self,order_id,*,restart=False):
+        from .admission import JobNativeContext
+        from .github_oidc import SharedJobHTTPS
+        from tools.read_pilot_driver import JobNativeReadDriver
+        if self._used or restart is not False:raise IdentityRefused('JOB_CONSUMED_REPLAY')
+        self._used=True
+        try:
+            if type(self.context) is not JobNativeContext:raise IdentityRefused('VERIFIED_JOB_CONTEXT_REQUIRED')
+            g=self.context.require(production=not self.context.test_only);self.reverify(order_id)
+            source=SourceBinding(g['admission_id'],g['bundle_sha256'],g['source_sha256'],g['client_id_sha256'],g['registry']['order_id_sha256'],g['registry']['sha256'])
+            r=GitRefReservation();r._binding=_ReservationBinding(source,self.context.identity,g['caller']['source_commit'],g['caller']['source_tree'],_RESERVATION_TEST_SEAL if self.context.test_only else _RESERVATION_HOST_SEAL)
+            r._consumer_context=self.context;r._canonical_consumer_key=g['canonical_effect_key_sha256'];r._wall_clock=time.time
+            r._job_token=self._job_token;r._wire=SharedJobHTTPS(self.lifetime,factory=self._wire._factory,scope=_TEST if self.context.test_only else _PROVIDER,limit_calls=10)
+            self._reservation=r
+            args={'caller_run_id':g['caller']['run_id'],'caller_run_attempt':'1','grant_id':g['admission_id']}
+            if self.context.test_only:r.reserve_for_test(**args)
+            else:r.reserve_production(**args)
+            self._driver=JobNativeReadDriver.from_native(self.context,self)
+            return self._driver.run(order_id)
+        finally:self.lifetime.cleanup_once()
+
+def job_native_entrypoint(*,policy=None,credentials=None,job_token=None,oidc_token=None,order_id=None,lifetime=None):
+    # Genuine protected producers stay None; no ENV/host-path/secret probing.
+    if any(v is None for v in (policy,credentials,job_token,oidc_token,order_id,lifetime)):
+        raise IdentityRefused('NATIVE_PRODUCERS_UNBOUND')
+    provider=JobNativeProvider.from_native(policy=policy,job_token=job_token,lifetime=lifetime)
+    try:
+        provider.bind(oidc_token,credentials,now=int(time.time()))
+        return provider.consume_native(order_id)
+    finally:lifetime.cleanup_once()

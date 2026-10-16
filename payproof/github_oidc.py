@@ -503,3 +503,176 @@ def consumer_policy(grant):
         c['ref'],c['source_commit'],c['source_commit'],c['event'],
         'repo:Elinfiny@273768139/PayProof@1419908202:ref:refs/heads/main',
         c['run_id'],'1',c['not_before'],int(datetime.fromisoformat(grant['expires_at'].replace('Z','+00:00')).timestamp()))
+
+
+# Private inactive job-native extension36; legacy prefix unchanged.
+@dataclass(frozen=True, repr=False)
+class NativeIdentityPolicy:
+    """Expected values supplied by a future source grant, never inferred from JWT."""
+    audience: str
+    workflow_ref: str
+    ref: str
+    sha: str
+    workflow_sha: str
+    event_name: str
+    subject: str
+    run_id: str
+    run_attempt: str
+    not_before: int
+    expires_at: int
+
+    def __post_init__(self):
+        if (self.audience != 'urn:payproof:orders-read:consumer-v3'
+                or self.workflow_ref != REPOSITORY + '/.github/workflows/payproof-read-pilot.yml@refs/heads/main'
+                or self.ref != 'refs/heads/main' or self.event_name != 'workflow_dispatch'
+                or self.subject != 'repo:Elinfiny@273768139/PayProof@1419908202:environment:payproof-sandbox-readonly'
+                or any(type(x) is not str or not re.fullmatch(r'[0-9a-f]{40}', x) for x in (self.sha, self.workflow_sha))
+                or self.sha != self.workflow_sha
+                or type(self.run_id) is not str or not re.fullmatch(r'[1-9][0-9]{0,19}', self.run_id)
+                or self.run_attempt != '1'
+                or type(self.not_before) is not int or type(self.expires_at) is not int
+                or not 0 < self.expires_at - self.not_before <= 300):
+            _reject('POLICY_UNBOUND')
+
+class JobLifetime:
+    """One born-before-effects holder. Originals never enter exported metadata."""
+    def __init__(self, *, clock=time.monotonic, seconds=300, cleanup=None):
+        if type(seconds) not in (int,float) or not math.isfinite(seconds) or not 0<seconds<=300:
+            _reject('JOB_WINDOW')
+        self.clock=clock; self.originals=[]; self.clock_originals=[]; self.cleanup_errors=[]; self.first_unknown=None
+        self._cleanup=cleanup; self._cleanup_claimed=False; self._last=None
+        self.deadline=self._now()+seconds
+    def _now(self):
+        try:
+            value=self.clock()
+            self.clock_originals.append(value)  # Own the exact object before any validation.
+        except BaseException as error:
+            self.originals.append(('CLOCK',None,error)); self.mark('CLOCK_FAILURE'); raise TransportUnknown('JOB_UNKNOWN') from None
+        if type(value) not in (int,float) or not math.isfinite(value) or (self._last is not None and value<self._last):
+            self.mark('CLOCK_INVALID'); raise TransportUnknown('JOB_UNKNOWN') from None
+        self._last=value; return value
+    def mark(self,code):
+        if self.first_unknown is None:self.first_unknown={'code':code,'original_index':len(self.originals)-1}
+    def guard(self,phase,*,cleanup=False):
+        try:
+            remaining=self.deadline-self._now()
+            if remaining<=0:self.mark('ABSOLUTE_DEADLINE')
+        except TransportUnknown:
+            if cleanup:return 0.0
+            raise
+        if self.first_unknown is not None and not cleanup:raise TransportUnknown('JOB_UNKNOWN') from None
+        return max(0.0,remaining)
+    def invoke(self,label,function):
+        self.guard('PRE_REQUEST');self.guard('PRE_INVOKE')
+        try:value=function()
+        except BaseException as error:
+            self.originals.append((label,None,error));self.mark('PRIMARY_EXCEPTION');self.guard('POST_RETURN');raise
+        self.originals.append((label,value,None));self.guard('POST_RETURN');return value
+    def cleanup_once(self):
+        if self._cleanup_claimed:return
+        self._cleanup_claimed=True
+        self.guard('PRE_REQUEST_CLEANUP',cleanup=True)
+        self.guard('PRE_INVOKE_CLEANUP',cleanup=True)
+        if self._cleanup is not None:
+            try:value=self._cleanup()
+            except BaseException as error:
+                self.originals.append(('CLEANUP',None,error));self.cleanup_errors.append(error);self.mark('CLEANUP_EXCEPTION')
+            else:self.originals.append(('CLEANUP',value,None))
+        self.guard('POST_RETURN_CLEANUP',cleanup=True)
+
+class SharedJobHTTPS(_FixedHTTPS):
+    def __init__(self,lifetime,*,factory=None,scope=None,limit_calls=64):
+        if type(lifetime) is not JobLifetime:_reject('SAME_JOB_LIFETIME_REQUIRED')
+        self.lifetime=lifetime
+        super().__init__(factory=factory,clock=lifetime.clock,seconds=lifetime.guard('INIT'),limit_calls=limit_calls,scope=scope)
+        self._deadline=lifetime.deadline
+    def _guard(self,phase,operation=None,*,cleanup=False):
+        return self.lifetime.guard(phase,cleanup=cleanup)
+    def _unknown(self,code,phase,operation=None):
+        super()._unknown(code,phase,operation);self.lifetime.mark(code)
+
+class NativeOIDCVerifier:
+    """Separate Environment policy; no ConsumerContext/HMAC bootstrapping cycle."""
+    def verify_test(self,token,*,policy,raw_jwks,now,lifetime):
+        lifetime.guard('PRE_VERIFY')
+        result=self._verify_environment(token,policy=policy,snapshot=JWKSSnapshot.synthetic_for_test(raw_jwks,observed_at=now),now=now,test_only=True)
+        lifetime.guard('POST_VERIFY');return result
+    def verify_native(self,token,*,authority=None,wire=None,now=None):
+        from .admission import JobPolicyEvidence
+        if type(authority) is not JobPolicyEvidence:_reject('AUTHENTIC_JOB_POLICY_UNBOUND')
+        authority.require(production=True)
+        if type(wire) is not SharedJobHTTPS or wire._scope is not _PROVIDER:_reject('AUTHENTIC_JWKS_REQUIRED')
+        if getattr(self,'_used',False):_reject('OIDC_ONCE')
+        self._used=True
+        status,raw=wire.exchange('GET','token.actions.githubusercontent.com','/.well-known/jwks',headers={'Accept':'application/json'})
+        if status!=200:_reject('JWKS_STATUS')
+        result=self._verify_environment(token,policy=authority.policy,snapshot=JWKSSnapshot(raw,now,_PROVIDER),now=now,test_only=False)
+        wire.lifetime.guard('POST_VERIFY');return result
+    def _verify_environment(self, token, *, policy, snapshot, now, test_only):
+        if type(policy) is not NativeIdentityPolicy or type(snapshot) is not JWKSSnapshot or snapshot._seal is not (_TEST if test_only else _PROVIDER):
+            _reject('TYPED_TEST_INPUT_REQUIRED')
+        if snapshot.origin != ISSUER or snapshot.url != JWKS_URL:
+            _reject('JWKS_ORIGIN')
+        if type(now) is not int or not policy.not_before <= now < policy.expires_at:
+            _reject('ABSOLUTE_WINDOW')
+        if not 0 <= now - snapshot.observed_at <= 300:
+            _reject('JWKS_STALE')
+        if type(token) is not str or len(token) > 32768 or token.count('.') != 2:
+            _reject('COMPACT_JWS')
+        head, payload, signature = token.split('.')
+        header = _object(_b64(head, 4096), 3072)
+        if (header.get('alg') != 'RS256' or header.get('typ') != 'JWT'
+                or not {'alg', 'typ', 'kid'} <= set(header)
+                or not set(header) <= {'alg', 'typ', 'kid', 'x5t', 'x5t#S256'}
+                or type(header['kid']) is not str or not re.fullmatch(r'[A-Za-z0-9_-]{1,128}', header['kid'])):
+            _reject('HEADER_ALGORITHM_OR_KEY_REFERENCE')
+        jwks = _object(snapshot._raw, 65536)
+        keys = jwks.get('keys')
+        if set(jwks) != {'keys'} or type(keys) is not list or not 1 <= len(keys) <= 32:
+            _reject('JWKS_SHAPE')
+        if any(type(k) is not dict or type(k.get('kid')) is not str for k in keys):
+            _reject('JWKS_KEYS')
+        if len({k['kid'] for k in keys}) != len(keys):
+            _reject('DUPLICATE_KID')
+        selected = [k for k in keys if k['kid'] == header['kid']]
+        if len(selected) != 1:
+            _reject('KID_NOT_FOUND')
+        key = selected[0]
+        if (key.get('kty') != 'RSA' or key.get('use') != 'sig' or key.get('alg') != 'RS256'
+                or not {'kid', 'kty', 'use', 'alg', 'n', 'e'} <= set(key)
+                or not set(key) <= {'kid', 'kty', 'use', 'alg', 'n', 'e', 'x5c', 'x5t', 'x5t#S256'}):
+            _reject('RSA_SIGNING_KEY_REQUIRED')
+        nraw, eraw = _b64(key['n'], 1400), _b64(key['e'], 8)
+        if nraw[0] == 0 or eraw[0] == 0:
+            _reject('NONCANONICAL_RSA_INTEGER')
+        n, e = int.from_bytes(nraw, 'big'), int.from_bytes(eraw, 'big')
+        if not 2048 <= n.bit_length() <= 8192 or e != 65537:
+            _reject('RSA_KEY_POLICY')
+        try:
+            public_key = rsa.RSAPublicNumbers(e, n).public_key()
+            public_key.verify(_b64(signature, 1400), (head + '.' + payload).encode('ascii'),
+                              padding.PKCS1v15(), hashes.SHA256())
+        except (InvalidSignature, ValueError, TypeError):
+            _reject('SIGNATURE_INVALID')
+        # No identity is used until cryptographic signature verification completes.
+        claims = _object(_b64(payload, 24576), 18432)
+        expected = {'iss': ISSUER, 'aud': policy.audience, 'repository': REPOSITORY,
+                    'repository_id': REPOSITORY_ID, 'repository_owner_id': OWNER_ID,
+                    'repository_owner': 'Elinfiny', 'repository_visibility': 'private',
+                    'workflow_ref': policy.workflow_ref, 'workflow_sha': policy.workflow_sha,
+                    'ref': policy.ref, 'sha': policy.sha, 'event_name': policy.event_name,
+                    'sub': policy.subject, 'run_id': policy.run_id, 'run_attempt': policy.run_attempt,
+                    'runner_environment': 'github-hosted', 'ref_type': 'branch', 'environment': 'payproof-sandbox-readonly'}
+        if any(type(claims.get(k)) is not str or claims[k] != v for k, v in expected.items()):
+            _reject('IDENTITY_OR_ISSUER_AUDIENCE')
+        if any(type(claims.get(k)) is not int for k in ('iat', 'nbf', 'exp')):
+            _reject('NUMERIC_DATE_REQUIRED')
+        iat, nbf, exp = (claims[k] for k in ('iat', 'nbf', 'exp'))
+        if not (policy.not_before <= iat <= now < exp <= policy.expires_at
+                and policy.not_before <= nbf <= now
+                and 0 < exp - iat <= 300):
+            _reject('TOKEN_TIME_WINDOW')
+        if type(claims.get('jti')) is not str or not 1 <= len(claims['jti']) <= 256:
+            _reject('JTI_REQUIRED')
+        # job_workflow_ref is optional/reusable-workflow-specific; no invented job claim.
+        return VerifiedIdentity(MappingProxyType(claims), _EVIDENCE, policy, test_only)

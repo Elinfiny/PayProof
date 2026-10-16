@@ -274,3 +274,122 @@ def load_consumer_context():
     if type(result) is not ConsumerContext: raise InvalidData('V3_REQUIRED')
     result.require(production=True)
     return result
+
+
+# Private inactive job-native extension36; legacy prefix unchanged.
+
+# Neither native policy provenance nor credential custody has a producer in36.
+_JOB_NATIVE_SEAL=object()
+_JOB_SYNTHETIC_SEAL=object()
+JOB_NATIVE_SCHEMA='PAYPROOF_JOB_NATIVE_CONTEXT_V1'
+
+@dataclass(frozen=True,repr=False)
+class JobPolicyEvidence:
+    policy: object=field(repr=False)
+    _grant_raw: bytes=field(repr=False)
+    protected_manifest: object=field(repr=False)
+    _seal: object=field(repr=False)
+    @property
+    def test_only(self):return self._seal is _JOB_SYNTHETIC_SEAL
+    @property
+    def grant(self):return self.require()
+    def require(self,production=False):
+        from .github_oidc import NativeIdentityPolicy,IdentityRefused
+        if (type(self) is not JobPolicyEvidence or self._seal not in (_JOB_NATIVE_SEAL,_JOB_SYNTHETIC_SEAL)
+                or (production and self._seal is not _JOB_NATIVE_SEAL)
+                or type(self.policy) is not NativeIdentityPolicy or self.protected_manifest is None):
+            raise IdentityRefused('AUTHENTIC_JOB_POLICY_UNBOUND')
+        g=_json(self._grant_raw)
+        if g.get('schema')!=JOB_NATIVE_SCHEMA or g.get('bundle_manifest')!=runtime_manifest():
+            raise IdentityRefused('JOB_SOURCE_MANIFEST')
+        if (g.get('bundle_sha256')!=hashlib.sha256(canonical(runtime_manifest()).encode()).hexdigest()
+                or g.get('source_sha256')!=source_fingerprint()
+                or g.get('operations')!=['orders:read'] or g.get('project')!='PayProof'
+                or g.get('environment')!='sandbox' or g.get('external_budget_usd')!='0.00'
+                or g.get('live_ai') is not False):
+            raise IdentityRefused('JOB_EXACT_READ_SCOPE')
+        c=g.get('caller',{})
+        if (c.get('source_commit')!=self.policy.sha or c.get('run_id')!=self.policy.run_id
+                or c.get('workflow_path')!='.github/workflows/payproof-read-pilot.yml'
+                or c.get('ref')!='refs/heads/main' or c.get('job_name')!='read_only'
+                or c.get('attempt')!='1' or c.get('environment')!='payproof-sandbox-readonly'):
+            raise IdentityRefused('JOB_CALLER_POLICY')
+        fixed={'repository_id':'1419908202','owner_id':'273768139','actor':'Elinfiny',
+               'actor_id':'273768139','fork':False,'visibility':'private','event':'workflow_dispatch',
+               'issuer':'https://token.actions.githubusercontent.com','audience':V3_AUDIENCE}
+        if any(type(c.get(k)) is not type(v) or c[k]!=v for k,v in fixed.items()):
+            raise IdentityRefused('JOB_FIXED_CALLER')
+        _digest(c.get('source_tree'),40);_digest(c.get('workflow_sha256'))
+        r=g.get('registry')
+        if (type(r) is not dict or r.get('provider')!='github'
+                or r.get('path')!='payproof-orders-registry.json'):
+            raise IdentityRefused('JOB_REGISTRY_UNBOUND')
+        _digest(r.get('revision'),40)
+        for key in ('sha256','order_id_sha256','legacy_refs_sha256'):_digest(r.get(key))
+        if (g.get('canonical_effect_key_sha256')!=canonical_effect_key(g['client_id_sha256'],r['order_id_sha256'])
+                or not isinstance(g.get('legacy_grant_ids'),list)
+                or datetime.fromisoformat(g['expires_at']).timestamp()>self.policy.expires_at):
+            raise IdentityRefused('JOB_EFFECT_OR_EXPIRY')
+        return g
+    @classmethod
+    def synthetic(cls,policy,grant):
+        # A public fixture cannot become a native policy or signed host V3.
+        value=cls(policy,canonical(grant).encode(), 'SYNTHETIC_TEST_MANIFEST',_JOB_SYNTHETIC_SEAL)
+        value.require();return value
+
+@dataclass(frozen=True,repr=False)
+class JobCredentials:
+    _raw: bytes=field(repr=False)
+    _seal: object=field(repr=False)
+    @classmethod
+    def synthetic(cls,client_id,client_secret):
+        return cls(canonical({'client_id':client_id,'client_secret':client_secret}).encode(),_JOB_SYNTHETIC_SEAL)
+    def require(self,*,production=False):
+        if self._seal not in (_JOB_NATIVE_SEAL,_JOB_SYNTHETIC_SEAL) or (production and self._seal is not _JOB_NATIVE_SEAL):
+            raise InvalidData('JOB_CREDENTIAL_CUSTODY_UNBOUND')
+        c=_json(self._raw)
+        if set(c)!={'client_id','client_secret'} or any(type(v) is not str or not 0<len(v)<=4096 for v in c.values()):
+            raise InvalidData('JOB_CREDENTIAL_BOUNDS')
+        return c
+
+def intake_step_scoped_credentials(payload,*,custody=None):
+    # No ENV read, generic factory or supplied bytes can prove actual custody.
+    # A genuine provider-bound custody producer needs separate qualification.
+    raise InvalidData('AUTHENTIC_STEP_CUSTODY_UNBOUND')
+
+@dataclass(frozen=True,repr=False)
+class JobNativeContext:
+    context: SandboxContext=field(repr=False)
+    evidence: JobPolicyEvidence=field(repr=False)
+    identity: object=field(repr=False)
+    provider: object=field(repr=False)
+    _seal: object=field(repr=False)
+    @property
+    def test_only(self):return self._seal is _JOB_SYNTHETIC_SEAL
+    @property
+    def grant(self):return self.require()
+    def require(self,production=False):
+        from .github_oidc import IdentityRefused,_EVIDENCE
+        if (type(self) is not JobNativeContext or self._seal not in (_JOB_NATIVE_SEAL,_JOB_SYNTHETIC_SEAL)
+                or (production and self.test_only) or self.identity._seal is not _EVIDENCE
+                or self.identity.test_only is not self.test_only
+                or self.provider._source_identity is not self.identity):
+            raise IdentityRefused('JOB_TYPED_CONTEXT_REQUIRED')
+        g=self.evidence.require(production=production);self.context.require('orders:read')
+        self.provider.lifetime.guard('CONTEXT_REQUIRE');return g
+
+def _context_from_verified_job(evidence,identity,provider,credentials):
+    from .github_oidc import VerifiedIdentity,_EVIDENCE,IdentityRefused
+    from .bootstrap_bridge import JobNativeProvider
+    if (type(evidence) is not JobPolicyEvidence or type(identity) is not VerifiedIdentity
+            or identity._seal is not _EVIDENCE or type(provider) is not JobNativeProvider
+            or provider._source_identity is not identity or provider.context is not evidence
+            or identity.policy is not evidence.policy or type(credentials) is not JobCredentials):
+        raise IdentityRefused('JOB_VERIFIED_CHAIN_REQUIRED')
+    g=evidence.require(production=not evidence.test_only)
+    if identity.test_only is not evidence.test_only or credentials._seal is not evidence._seal:raise IdentityRefused('JOB_SCOPE_MIX')
+    c=credentials.require(production=not evidence.test_only)
+    if hashlib.sha256(c['client_id'].encode()).hexdigest()!=g['client_id_sha256']:raise IdentityRefused('JOB_APPLICATION_MISMATCH')
+    ctx=SandboxContext(g['admission_id'],source_fingerprint(),datetime.fromisoformat(g['expires_at']),frozenset({'orders:read'}),c['client_id'],c['client_secret'],None,evidence.test_only,_SEAL)
+    result=JobNativeContext(ctx,evidence,identity,provider,_JOB_SYNTHETIC_SEAL if evidence.test_only else _JOB_NATIVE_SEAL)
+    result.require(production=not evidence.test_only);return result

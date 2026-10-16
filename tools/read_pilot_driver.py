@@ -220,3 +220,40 @@ def _from_consumer(cls, context, registry, provider):
     return driver
 
 ReadPilotDriver.from_consumer=classmethod(_from_consumer)
+
+
+# Private inactive job-native extension36; legacy prefix unchanged.
+
+class JobNativeReadDriver(ReadPilotDriver):
+    def export(self,*,repeat_refused=False):
+        result=super().export(repeat_refused=repeat_refused)
+        result['scope']='SYNTHETIC_TEST_JOB_NATIVE' if self._context.test_only else 'JOB_NATIVE_UNQUALIFIED'
+        if self._lifetime.first_unknown is not None:
+            result['status']='UNKNOWN';result['first_unknown']=dict(self._lifetime.first_unknown)
+        return result
+    @classmethod
+    def from_native(cls,context,provider):
+        from payproof.admission import JobNativeContext
+        from payproof.bootstrap_bridge import JobNativeProvider,ConsumerRegistry,_REGISTRY
+        if type(context) is not JobNativeContext or type(provider) is not JobNativeProvider or provider.context is not context:
+            raise InvalidData('EXACT_JOB_NATIVE_CHAIN')
+        context.require(production=not context.test_only)
+        d=cls(clock=provider.lifetime.clock,cleanup=provider.lifetime.cleanup_once)
+        d._lifetime=provider.lifetime;d._absolute_deadline=provider.lifetime.deadline
+        d._binding=_CONSUMER_BINDING;d._context=context.context
+        d._registry=ConsumerRegistry(provider,_REGISTRY);d._boundary=_Boundary(d,provider.paypal,BASE)
+        return d
+    def _deadline_check(self,phase,where,*,stop=True):
+        try:self._lifetime.guard(phase,cleanup=not stop)
+        except Exception:
+            self._problem('SHARED_JOB_UNKNOWN',phase,where)
+            if stop:raise _Stop()
+        if self._lifetime.first_unknown is not None:
+            self._problem('SHARED_JOB_UNKNOWN',phase,where)
+    def _problem(self,code,phase,where,original_index=None):
+        super()._problem(code,phase,where,original_index)
+        if self._first_unknown is not None:self._lifetime.mark(code)
+
+def inactive_native_job_main():
+    from payproof.bootstrap_bridge import job_native_entrypoint
+    return job_native_entrypoint(policy=None,credentials=None,job_token=None,oidc_token=None,order_id=None,lifetime=None)
