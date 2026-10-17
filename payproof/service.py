@@ -5,6 +5,12 @@ from typing import Protocol
 from .admission import _json, load_host_context
 from .core import InvalidData, UnknownResult, canonical, explain
 from .paypal import SandboxPayPal
+from .local_ai_view import advisory_view
+
+
+def annotated_order(order, assistance=None, synthetic=False):
+    """Additional nonbinding view; never mutate the stored/deterministic order."""
+    return dict(order, local_assistance=advisory_view(order, assistance, synthetic))
 
 
 class ExplanationPort(Protocol):
@@ -38,6 +44,7 @@ def inspect_candidate(candidate, request):
 class PaymentEvidenceService:
     store: object
     adapter: SandboxPayPal
+    assistance: object = None
 
     def __post_init__(self):
         if type(self.adapter) is not SandboxPayPal:
@@ -78,6 +85,7 @@ class PaymentEvidenceService:
         raise InvalidData('Live AI grant, custody and enforced cap are not admitted')
 
     def _view(self,order):
-        return {'mode':self.adapter.mode,'order':order,'explanation':explain(order),
+        view = annotated_order(order, self.assistance, self.adapter.mode == 'SANDBOX_CONTRACT_TEST')
+        return {'mode':self.adapter.mode,'order':view,'explanation':explain(order),
                 'explanation_request':explanation_request(order),'live_ai':False,
                 'payment_mutation_actions':[]}

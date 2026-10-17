@@ -1,6 +1,7 @@
 'use strict';
 const byId = id => document.getElementById(id);
 let current = null, lastEvent = null;
+let currentAIMode = 'DETERMINISTIC — NOT LIVE AI';
 async function call(path, body) {
   const response = await fetch(path, body ? {method:'POST',headers:{'Content-Type':'application/json','X-PayProof-Request':'fixture-ui'},body:JSON.stringify(body)} : {});
   const result = await response.json();
@@ -10,6 +11,8 @@ async function call(path, body) {
 async function refresh() {
   const result = await call('/api/state');
   byId('mode').textContent = result.mode;
+  currentAIMode = result.ai_mode;
+  byId('ai-mode').textContent = result.ai_mode;
   current = result.orders[0];
   byId('state').textContent = current.state;
   byId('state').dataset.state = current.state;
@@ -19,6 +22,11 @@ async function refresh() {
   byId('observed').textContent = current.observed_at ? new Date(current.observed_at).toLocaleString() : 'No observation yet';
   byId('summary').textContent = current.explanation.text;
   byId('next').textContent = current.explanation.next_step;
+  const advice = current.local_assistance || {priority:'unknown',text:'Local model assistance unavailable.',uncertainty:true,model_fingerprint:''};
+  byId('local-priority').textContent = advice.priority;
+  byId('local-explanation').textContent = advice.text;
+  byId('local-uncertainty').textContent = advice.uncertainty ? 'UNKNOWN — no advisory prediction.' : 'Nonbinding explanation priority; never payment certainty.';
+  byId('local-model-id').textContent = advice.model_fingerprint || 'No fitted model';
   byId('raw').textContent = JSON.stringify(current.facts || {state:current.state,evidence:'No usable current provider facts'},null,2);
   byId('previous').hidden = !(current.last_verified && ['UNKNOWN','CONFLICT'].includes(current.state));
   byId('previous').textContent = current.last_verified ? `Historical evidence: ${current.last_verified.facts.state} at ${current.last_verified.observed_at}. This does not resolve the current outcome.` : '';
@@ -44,7 +52,7 @@ byId('duplicate').addEventListener('click',()=>action(async()=>{
 }));
 byId('export').addEventListener('click',()=>{
   if(!current)return;
-  const evidence={schema:'PAYPROOF_EVIDENCE_V1',mode:'SYNTHETIC_ONLY',ai_mode:'DETERMINISTIC_NOT_AI',order:current};
+  const evidence={schema:'PAYPROOF_EVIDENCE_V1',mode:'SYNTHETIC_ONLY',ai_mode:currentAIMode,order:current};
   const url=URL.createObjectURL(new Blob([JSON.stringify(evidence,null,2)],{type:'application/json'}));
   const a=document.createElement('a');a.href=url;a.download='payproof-synthetic-evidence.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 });

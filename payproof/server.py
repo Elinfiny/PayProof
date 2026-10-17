@@ -10,7 +10,8 @@ from urllib.parse import urlparse
 from .core import Store, InvalidData, canonical, identifier
 from .admission import SandboxContext, load_host_context, _json
 from .paypal import SandboxPayPal
-from .service import PaymentEvidenceService
+from .service import PaymentEvidenceService, annotated_order
+from .local_ai_view import enable_local_assistance, assistance_metadata
 from . import fixtures
 
 STATIC = Path(__file__).resolve().parent / "web"
@@ -57,6 +58,7 @@ class HttpApplication:
     mode: str
     store: Store
     service: PaymentEvidenceService = None
+    assistance: object = None
 
     def __post_init__(self):
         if self.mode not in NAMESPACES or type(self.store) is not Store:
@@ -72,12 +74,14 @@ class HttpApplication:
                 raise InvalidData("HTTP database namespace mismatch")
 
     def state(self):
+        local_model = assistance_metadata(self.assistance, self.mode == 'fixture')
         if self.mode == "fixture":
-            return {"mode": "SYNTHETIC FIXTURES — NO PAYPAL CONNECTION", "ai_mode": "DETERMINISTIC — NOT LIVE AI",
-                    "contest_ready": False, "orders": self.store.list_orders(), "gates": list(GATES)}
+            return {"mode": "SYNTHETIC FIXTURES — NO PAYPAL CONNECTION", "ai_mode": local_model['mode'],
+                    "local_model": local_model, "contest_ready": False,
+                    "orders": [annotated_order(order, self.assistance, True) for order in self.store.list_orders()], "gates": list(GATES)}
         # No account/order enumeration or real order data on the public metadata GET.
-        return {"mode": self.service.adapter.mode + " — READ_ONLY", "ai_mode": "DETERMINISTIC — NOT LIVE AI",
-                "contest_ready": False, "orders": [], "gates": list(GATES)}
+        return {"mode": self.service.adapter.mode + " — READ_ONLY", "ai_mode": local_model['mode'],
+                "local_model": local_model, "contest_ready": False, "orders": [], "gates": list(GATES)}
 
     def post(self, path, data):
         if self.mode == "sandbox-readonly":
@@ -100,7 +104,7 @@ class HttpApplication:
         return 404, {"error": "No live integration endpoint in this staged build"}
 
 
-def prepare_application(mode="fixture", db_path=None):
+def prepare_application(mode="fixture", db_path=None, local_ai=False):
     if mode not in NAMESPACES:
         raise InvalidData("Unknown server mode")
     adapter = None
@@ -112,10 +116,11 @@ def prepare_application(mode="fixture", db_path=None):
         adapter = SandboxPayPal(context)
     # Admission must precede directory creation, SQLite, socket creation and all network effects.
     store = _namespace_store(db_path or DEFAULT_DATABASES[mode], mode)
+    assistance = enable_local_assistance() if local_ai else None
     if mode == "fixture":
         store.register(fixtures.ORDER_ID, "120.00", "EUR")
-        return HttpApplication(mode, store)
-    return HttpApplication(mode, store, PaymentEvidenceService(store, adapter))
+        return HttpApplication(mode, store, assistance=assistance)
+    return HttpApplication(mode, store, PaymentEvidenceService(store, adapter, assistance), assistance)
 
 
 def _post_guard(application, headers, port):
@@ -149,8 +154,8 @@ def dispatch_post(application, path, headers, body, port):
         return 400, {"error": message}
 
 
-def make_server(port=0, db_path=None, mode="fixture"):
-    application = prepare_application(mode, db_path)
+def make_server(port=0, db_path=None, mode="fixture", local_ai=False):
+    application = prepare_application(mode, db_path, local_ai)
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *args):
@@ -206,9 +211,10 @@ def main():
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--db", default=None)
     parser.add_argument("--mode", choices=tuple(NAMESPACES), default="fixture")
+    parser.add_argument("--local-ai", action="store_true", help="Explicitly enable local nonbinding model assistance; no external AI")
     args = parser.parse_args()
     os.umask(0o077)
-    server = make_server(args.port, args.db, args.mode)
+    server = make_server(args.port, args.db, args.mode, args.local_ai)
     label = "SYNTHETIC ONLY" if args.mode == "fixture" else "SANDBOX READ_ONLY"
     print(f"PayProof running at http://127.0.0.1:{server.server_port} — {label}", flush=True)
     try:
