@@ -1,0 +1,168 @@
+{
+  "schema": "PAYPROOF_SYNTHETIC_TEXT_TRAINING91_V1",
+  "license": "CC0-1.0",
+  "provenance": "Original public synthetic sentences authored for PayProof; no account, personal, provider, transaction or credential payloads.",
+  "rows": [
+    {
+      "group": "train-approval-context-01",
+      "label": "approval_context",
+      "text": "Payer approval records consent only before capture evidence is available"
+    },
+    {
+      "group": "train-approval-context-02",
+      "label": "approval_context",
+      "text": "Buyer permission and consent appear in the approval record"
+    },
+    {
+      "group": "train-approval-context-03",
+      "label": "approval_context",
+      "text": "The approval document shows payer consent and pending capture"
+    },
+    {
+      "group": "train-approval-context-04",
+      "label": "approval_context",
+      "text": "Approval evidence concerns permission rather than a capture receipt"
+    },
+    {
+      "group": "train-approval-context-05",
+      "label": "approval_context",
+      "text": "Consent was recorded as approval with capture still pending"
+    },
+    {
+      "group": "train-approval-context-06",
+      "label": "approval_context",
+      "text": "Buyer approval is documented but settlement evidence is absent"
+    },
+    {
+      "group": "train-approval-context-07",
+      "label": "approval_context",
+      "text": "Review payer permission in the supplied approval documentation"
+    },
+    {
+      "group": "train-approval-context-08",
+      "label": "approval_context",
+      "text": "An approval record establishes consent context only"
+    },
+    {
+      "group": "train-capture-context-01",
+      "label": "capture_context",
+      "text": "A completed capture receipt records the captured transaction"
+    },
+    {
+      "group": "train-capture-context-02",
+      "label": "capture_context",
+      "text": "Capture evidence includes a confirmed settlement receipt"
+    },
+    {
+      "group": "train-capture-context-03",
+      "label": "capture_context",
+      "text": "The transaction record contains completed capture evidence"
+    },
+    {
+      "group": "train-capture-context-04",
+      "label": "capture_context",
+      "text": "Review the received capture receipt and settlement documentation"
+    },
+    {
+      "group": "train-capture-context-05",
+      "label": "capture_context",
+      "text": "A capture record reports a completed transaction receipt"
+    },
+    {
+      "group": "train-capture-context-06",
+      "label": "capture_context",
+      "text": "Confirmed capture documentation records the received transaction"
+    },
+    {
+      "group": "train-capture-context-07",
+      "label": "capture_context",
+      "text": "The settlement receipt and capture record are supplied"
+    },
+    {
+      "group": "train-capture-context-08",
+      "label": "capture_context",
+      "text": "Captured transaction evidence appears in the completed receipt"
+    },
+    {
+      "group": "train-conflict-review-01",
+      "label": "conflict_review",
+      "text": "Conflicting records disagree and require discrepancy review"
+    },
+    {
+      "group": "train-conflict-review-02",
+      "label": "conflict_review",
+      "text": "Source documents contain contradictory evidence and a mismatch"
+    },
+    {
+      "group": "train-conflict-review-03",
+      "label": "conflict_review",
+      "text": "Review the discrepancy between conflicting source records"
+    },
+    {
+      "group": "train-conflict-review-04",
+      "label": "conflict_review",
+      "text": "The records disagree because the evidence is contradictory"
+    },
+    {
+      "group": "train-conflict-review-05",
+      "label": "conflict_review",
+      "text": "Mismatch across source documents requires a conflict review"
+    },
+    {
+      "group": "train-conflict-review-06",
+      "label": "conflict_review",
+      "text": "Conflicting approval and capture records need discrepancy review"
+    },
+    {
+      "group": "train-conflict-review-07",
+      "label": "conflict_review",
+      "text": "Contradictory source evidence requires reconciliation review"
+    },
+    {
+      "group": "train-conflict-review-08",
+      "label": "conflict_review",
+      "text": "The conflicting documentation contains a source mismatch"
+    },
+    {
+      "group": "train-request-evidence-01",
+      "label": "request_evidence",
+      "text": "Missing documentation leaves insufficient evidence for review"
+    },
+    {
+      "group": "train-request-evidence-02",
+      "label": "request_evidence",
+      "text": "The source record is unavailable and evidence must be requested"
+    },
+    {
+      "group": "train-request-evidence-03",
+      "label": "request_evidence",
+      "text": "Request the missing receipt and incomplete documentation"
+    },
+    {
+      "group": "train-request-evidence-04",
+      "label": "request_evidence",
+      "text": "Unknown source information leaves missing evidence"
+    },
+    {
+      "group": "train-request-evidence-05",
+      "label": "request_evidence",
+      "text": "Insufficient records require a request for source documentation"
+    },
+    {
+      "group": "train-request-evidence-06",
+      "label": "request_evidence",
+      "text": "Documentation is absent and the receipt is unavailable"
+    },
+    {
+      "group": "train-request-evidence-07",
+      "label": "request_evidence",
+      "text": "The incomplete record requires missing source evidence"
+    },
+    {
+      "group": "train-request-evidence-08",
+      "label": "request_evidence",
+      "text": "Request unavailable documentation because the evidence is insufficient"
+    }
+  ]
+}
+
