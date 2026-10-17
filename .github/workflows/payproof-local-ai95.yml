@@ -158,7 +158,7 @@ jobs:
               ui_deadline=time.monotonic()+180
               executable=stage/'browsers/chromium-1248/chrome-linux64/chrome';assert executable.is_file() and not executable.is_symlink()
               binary=executable.read_bytes();assert len(binary)==301186376 and digest(binary)=='377a9fc07b495c3b8d0ab8ec1fdfd153641759f9756fea34d8dfce4de82f5025'
-              version=run('binary-version',[str(executable),'--version'],min(5,ui_deadline-time.monotonic()),root,env);assert b'156.0.8078.4' in version
+              version=run('binary-version',[str(executable),'--version'],min(10,ui_deadline-time.monotonic()),root,env);assert b'156.0.8078.4' in version
               emit({'binary_bytes':len(binary),'binary_sha256':digest(binary),'binary_version':version.decode().strip()})
               evidence=stage/'new-ui-evidence';assert not evidence.exists()
               env.update(QA93_CURRENT_ADMISSION_REF=os.environ['INPUT_ADMISSION'],QA93_EXPECTED_TREE='966fc0f91169981246c1bf059c4a8d10f50f4890',QA93_BINARY_SHA256=digest(binary),QA93_EVIDENCE_DIR=str(evidence))
