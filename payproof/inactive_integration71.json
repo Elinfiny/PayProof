@@ -1,0 +1,61 @@
+{
+  "schema": "PAYPROOF_INACTIVE_INSTALLED_SOURCE71",
+  "authority": false,
+  "native_activation": false,
+  "canonical_base": "ac0b60d4edca291844c7ed65882fb2b19fcfba6a",
+  "runtime8": [
+    {
+      "path": "payproof/admission.py",
+      "bytes": 23775,
+      "sha256": "c735ebebea0ccd9fe77dd0f64fd4fa3ab262ac5b22fb18d88ad1ae78c598c15d"
+    },
+    {
+      "path": "payproof/core.py",
+      "bytes": 14204,
+      "sha256": "429a7b26ccc6345f40c4a0800d42a33b7225c87b4901eb09544e861931364d72"
+    },
+    {
+      "path": "payproof/paypal.py",
+      "bytes": 6428,
+      "sha256": "289488de2d9d04878c67b99f98e7995b9d869ed0e56dc4b1e9a5d5036cd983c4"
+    },
+    {
+      "path": "payproof/service.py",
+      "bytes": 4223,
+      "sha256": "c293170e1837705e6b5def5d587ab843425ea7b74c623ce4814e346319ad8fc2"
+    },
+    {
+      "path": "payproof/server.py",
+      "bytes": 11167,
+      "sha256": "f0c2606e87396090ac2814acedb90ff90af71b30aeec96a1caf58ef7bc8ad6ac"
+    },
+    {
+      "path": "payproof/github_oidc.py",
+      "bytes": 34093,
+      "sha256": "324553275634071576e7f87367d969806b5ed6bcab58d2defc42577ef886a59e"
+    },
+    {
+      "path": "payproof/bootstrap_bridge.py",
+      "bytes": 53019,
+      "sha256": "63d796f20bb8ece0cde4f50875591393926afcaf08c2c9ddb8e0b81aa1832544"
+    },
+    {
+      "path": "tools/read_pilot_driver.py",
+      "bytes": 12716,
+      "sha256": "bae443485ccf35ad1bc3f63e81a5cb48aae32e1a9f119e46d508102b55ad1b2f"
+    }
+  ],
+  "runtime8_sha256": "29f556d1e474265a6d2c9517a0c26ec6823a06fb8173af42c52ae3788fb0e421",
+  "admission5_sha256": "7cc7fd0043658d1a296b0896537299e86335c43375d55bbec65e078e85d8b4c2",
+  "approved_app": null,
+  "default_application": "UNADOPTED",
+  "custody": "33HOLD",
+  "real_pilot": "UNADMITTED",
+  "external_grant_config_provenance": "UNPROVED",
+  "disabled_candidate": {
+    "path": "workflow_candidates/payproof-job-native36.yml.disabled",
+    "bytes": 1519,
+    "sha256": "b1a14c7565e8ee100907593c09869a6c21000cb698b540c2d81d72fa2b18c503"
+  },
+  "digest_scope": "Runtime8 only; this metadata file excluded to avoid circular selfhash. Hashes are computed from actual integrated bytes, not authorizing identities."
+}

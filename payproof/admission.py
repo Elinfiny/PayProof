@@ -393,3 +393,31 @@ def _context_from_verified_job(evidence,identity,provider,credentials):
     ctx=SandboxContext(g['admission_id'],source_fingerprint(),datetime.fromisoformat(g['expires_at']),frozenset({'orders:read'}),c['client_id'],c['client_secret'],None,evidence.test_only,_SEAL)
     result=JobNativeContext(ctx,evidence,identity,provider,_JOB_SYNTHETIC_SEAL if evidence.test_only else _JOB_NATIVE_SEAL)
     result.require(production=not evidence.test_only);return result
+
+# Private producer67. Legacy signed-host prefix and synthetic APIs unchanged.
+def intake_step_scoped_credentials(payload=None, *, custody=None):
+    from .job_policy_source42 import ProducedSource67, CREDENTIAL_NAMES67, _object
+    if payload is not None or type(custody) is not ProducedSource67:
+        raise InvalidData('EXACT_VERIFIED_STEP_CUSTODY67')
+    g = custody.require(production=True)  # TEST_ONLY and arbitrary payload refuse BEFORE ENV.
+    if g['bundle_manifest'] != runtime_manifest():
+        raise InvalidData('LOCAL_FINAL_MANIFEST67')
+    # Only after signature, whole source, environment, sole job, exact step map,
+    # registry lineage and local manifest verification may these two be read.
+    values = tuple(os.environ.get(n) for n in CREDENTIAL_NAMES67)
+    if any(type(v) is not str or not 0 < len(v) <= 4096 for v in values):
+        raise InvalidData('STEP_CREDENTIAL_BOUNDS67')
+    if hashlib.sha256(values[0].encode()).hexdigest() != g['client_id_sha256']:
+        raise InvalidData('STEP_APPLICATION_FINGERPRINT67')
+    result = JobCredentials(canonical(dict(zip(('client_id','client_secret'),values))).encode(),_JOB_NATIVE_SEAL)
+    result.require(production=True); return result
+
+# Private68: consume ONLY a runtime projection carrying original static source.
+_intake_before68 = intake_step_scoped_credentials
+def intake_step_scoped_credentials(payload=None, *, custody=None):
+    from .job_policy_source42 import ProducedSource67
+    if type(custody) is ProducedSource67:
+        g=custody.require(production=True)
+        if g.get('external_static_authorization68_sha256') is not None:
+            _digest(g['external_static_authorization68_sha256'])
+    return _intake_before68(payload,custody=custody)
