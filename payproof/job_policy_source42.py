@@ -421,3 +421,395 @@ class PreparedSourceCollector:
                 'cleanup_guard_faults': tuple(dict(row) for row in self.cleanup_guard_faults),
                 'closed': self.closed, 'native_source_factory': 'UNBOUND',
                 'native_policy_adapter': 'UNBOUND', 'raw_exceptions_exported': False}
+
+# Private producer67. No grant issuer, signer, token acquisition or app adoption.
+# Existing TEST_ONLY collector and legacy APIs above remain byte-identical.
+_SOURCE67_NATIVE = object()
+_SOURCE67_TEST = object()
+_ADMISSION67 = object()
+CREDENTIAL_NAMES67 = ('PAYPROOF_PAYPAL_SANDBOX_CLIENT_ID',
+                      'PAYPROOF_PAYPAL_SANDBOX_CLIENT_SECRET')
+# Deliberately unarmed until independently reviewed app adoption/publication.
+APPROVED_CLIENT_ID_SHA256_67 = None
+
+
+@dataclass(frozen=True, repr=False)
+class ProtectedAdmission67:
+    grant_raw: bytes
+    manifest_raw: bytes
+    registry_tree: str
+    grant_sha256: str
+    _seal: object
+
+    @classmethod
+    def load(cls):
+        # Reuse the existing root-owned/no-follow/single-link/0600 bounded loader.
+        # These files must be delivered by a separately admitted host mechanism;
+        # this code neither creates them nor treats caller JSON as that mechanism.
+        from .admission import _host_file
+        if APPROVED_CLIENT_ID_SHA256_67 is None:
+            raise SourceRefused('APP_ADOPTION_UNARMED67')
+        anchor = _object(_host_file('/run/payproof/job-source67-anchor.json', 4096))
+        if set(anchor) != {'grant_sha256', 'manifest_sha256', 'registry_tree'}:
+            raise SourceRefused('PROTECTED_ANCHOR67')
+        grant = _host_file('/run/payproof/job-source67-grant.json', 65536)
+        manifest = _host_file('/run/payproof/job-source67-manifest.json', 16384)
+        if (digest(grant) != _pin(anchor['grant_sha256']) or
+                digest(manifest) != _pin(anchor['manifest_sha256'])):
+            raise SourceRefused('PROTECTED_DELIVERY_DIGEST67')
+        return cls(grant, manifest, _pin(anchor['registry_tree'], 40),
+                   digest(grant), _ADMISSION67)
+
+
+def _workflow67(raw, *, armed):
+    # JSON is an unambiguous subset of GitHub's YAML workflow format. No YAML
+    # tags/aliases or broad string search can attest a different step mapping.
+    w = _object(raw); jobs = w.get('jobs', {})
+    if (set(jobs) != {'read_only'} or w.get('on') != {'workflow_dispatch': {}}
+            or w.get('permissions') != {}):
+        raise SourceRefused('SOLE_DISPATCH_JOB67')
+    job = jobs['read_only']; steps = job.get('steps')
+    if (job.get('environment') != ENVIRONMENT or job.get('runs-on') != 'ubuntu-24.04'
+            or job.get('timeout-minutes') != 5 or type(steps) is not list
+            or len(steps) != 2 or steps[1].get('id') != 'consume_native67'):
+        raise SourceRefused('EXACT_ENV_STEP67')
+    expected = {n: '${{ secrets.' + n + ' }}' for n in CREDENTIAL_NAMES67}
+    expected['GITHUB_TOKEN'] = '${{ github.token }}'
+    if (steps[1].get('env') != expected or 'env' in w or 'env' in job
+            or 'env' in steps[0] or steps[1].get('shell') != 'bash'
+            or steps[1].get('run') != 'python3 -c "from payproof.bootstrap_bridge import run_job_native67; run_job_native67()"'
+            or steps[0].get('uses') != 'actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3'
+            or steps[0].get('with') != {'ref': '${{ github.sha }}', 'persist-credentials': False}):
+        raise SourceRefused('EXACT_STEP_MAPPINGS67')
+    if armed and (job.get('permissions') != {'contents': 'write', 'id-token': 'write'}
+                  or job.get('if') != "${{ github.run_attempt == 1 && github.event_name == 'workflow_dispatch' }}"):
+        raise SourceRefused('REVIEWED_ACTIVATION67')
+    return digest(raw)
+
+
+@dataclass(frozen=True, repr=False)
+class ProducedSource67:
+    _grant_raw: bytes
+    _manifest_raw: bytes
+    identity: object
+    lifetime: object
+    _workflow_raw: bytes
+    _seal: object
+
+    @property
+    def test_only(self):
+        return self._seal is _SOURCE67_TEST
+
+    def require(self, *, production=False):
+        from .github_oidc import VerifiedIdentity, _EVIDENCE
+        if (self._seal not in (_SOURCE67_NATIVE, _SOURCE67_TEST)
+                or (production and self.test_only)
+                or type(self.identity) is not VerifiedIdentity
+                or self.identity._seal is not _EVIDENCE
+                or self.identity.test_only is not self.test_only):
+            raise SourceRefused('VERIFIED_SOURCE67_REQUIRED')
+        self.lifetime.guard('SOURCE67_REQUIRE')
+        g = _object(self._grant_raw)
+        if (digest(self._manifest_raw) != g['bundle_sha256']
+                or self._manifest_raw != canonical(g['bundle_manifest'])
+                or digest(self._workflow_raw) != g['caller']['workflow_sha256']):
+            raise SourceRefused('SOURCE67_BINDING_CHANGED')
+        _workflow67(self._workflow_raw, armed=not self.test_only)
+        return g
+
+
+class _ProviderReads67:
+    # Only the fixed real provider transport can construct a native collector.
+    # No supplied callable/client/JSON can substitute a production transport.
+    _file = PreparedSourceCollector._file
+    _leaves = PreparedSourceCollector._leaves
+
+    def __init__(self, wire, token, lifetime):
+        from .github_oidc import SharedJobHTTPS, _PROVIDER
+        if (type(wire) is not SharedJobHTTPS or wire._scope is not _PROVIDER
+                or wire._factory is not __import__('http.client', fromlist=['HTTPSConnection']).HTTPSConnection
+                or wire.lifetime is not lifetime
+                or type(token) is not str or not 0 < len(token) <= 4096):
+            raise SourceRefused('FIXED_AUTHENTIC_PROVIDER67')
+        self.wire = wire; self.token = token; self.lifetime = lifetime; self.pins = []
+
+    def _get(self, path):
+        _endpoint(path)  # Reuse the exact supported read allowlist.
+        original = self.lifetime.invoke('SOURCE67_GET', lambda: self.wire.exchange(
+            'GET', 'api.github.com', PREFIX + path,
+            headers={'Accept': 'application/vnd.github+json',
+                     'Authorization': 'Bearer ' + self.token}))
+        status, raw = original
+        if status != 200:
+            self.lifetime.mark('SOURCE67_STATUS'); raise SourceUnknown('SOURCE67_UNKNOWN')
+        data = _object(raw); self.pins.append((path, len(raw), digest(raw))); return data
+
+
+def _collect_bound67(reads, admission, identity, lifetime, *, test_only, now):
+    from .github_oidc import VerifiedIdentity, _EVIDENCE, NativeIdentityPolicy
+    if (type(identity) is not VerifiedIdentity or identity._seal is not _EVIDENCE
+            or identity.test_only is not test_only or type(identity.policy) is not NativeIdentityPolicy):
+        raise SourceRefused('REAL_OR_EXPLICIT_TEST_IDENTITY67')
+    if ((test_only and type(reads) is not PreparedSourceCollector)
+            or (not test_only and type(reads) is not _ProviderReads67)):
+        raise SourceRefused('FIXED_READ_PROVENANCE67')
+    if type(admission) is not ProtectedAdmission67 or admission._seal is not _ADMISSION67:
+        raise SourceRefused('PROTECTED_EXTERNAL_ADMISSION67')
+    g = _object(admission.grant_raw); c = g.get('caller', {}); r = g.get('registry', {})
+    manifest = json.loads(admission.manifest_raw)
+    if (digest(admission.grant_raw) != admission.grant_sha256
+            or g.get('schema') != 'PAYPROOF_JOB_NATIVE_CONTEXT_V1'
+            or g.get('project') != 'PayProof' or g.get('environment') != 'sandbox'
+            or g.get('operations') != ['orders:read'] or g.get('external_budget_usd') != '0.00'
+            or g.get('live_ai') is not False or type(g.get('admission_id')) is not str
+            or re.fullmatch('[A-Za-z0-9_-]{1,128}', g['admission_id']) is None):
+        raise SourceRefused('EXACT_EXTERNAL_READ_GRANT67')
+    fixed = {'repository_id': '1419908202', 'owner_id': '273768139', 'actor': 'Elinfiny',
+             'actor_id': '273768139', 'fork': False, 'visibility': 'private', 'attempt': '1',
+             'workflow_path': WORKFLOW, 'job_name': 'read_only', 'ref': 'refs/heads/main',
+             'event': 'workflow_dispatch', 'environment': ENVIRONMENT,
+             'issuer': 'https://token.actions.githubusercontent.com', 'audience': AUDIENCE}
+    if any(type(c.get(k)) is not type(v) or c[k] != v for k, v in fixed.items()):
+        raise SourceRefused('EXACT_NATIVE_CALLER67')
+    commit = _pin(c.get('source_commit'), 40); tree = _pin(c.get('source_tree'), 40)
+    run_id = _number(c.get('run_id')); _number(c.get('job_id'))
+    expiry = datetime.fromisoformat(g['expires_at'])
+    if (type(now) is not int or type(c.get('not_before')) is not int or expiry.tzinfo is None
+            or not c['not_before'] <= now < expiry.timestamp() <= c['not_before'] + 300
+            or identity.policy.sha != commit or identity.policy.workflow_sha != commit
+            or identity._claims.get('actor') != 'Elinfiny' or identity._claims.get('actor_id') != '273768139'
+            or identity.policy.run_id != run_id or identity.policy.not_before != c['not_before']
+            or identity.policy.expires_at != int(expiry.timestamp())):
+        raise SourceRefused('EXACT_SIGNED_WINDOW67')
+    if (type(manifest) is not list or len(manifest) != 8
+            or [x.get('path') for x in manifest] != list(PATHS)
+            or manifest != g.get('bundle_manifest') or canonical(manifest) != admission.manifest_raw
+            or digest(admission.manifest_raw) != g.get('bundle_sha256')):
+        raise SourceRefused('EXACT_FINAL_MANIFEST67')
+    repo = reads._get(''); branch = reads._get('/branches/main')
+    if (repo.get('id') != 1419908202 or repo.get('owner', {}).get('id') != 273768139
+            or repo.get('private') is not True or repo.get('fork') is not False
+            or branch.get('commit', {}).get('sha') != commit):
+        raise SourceRefused('CURRENT_REPO_SOURCE67')
+    leaves = reads._leaves(commit, tree)
+    actual = []
+    for row in manifest:
+        if set(row) != {'path', 'bytes', 'sha256'} or type(row['bytes']) is not int:
+            raise SourceRefused('EXACT_MANIFEST_ROW67')
+        raw = reads._file(leaves, row['path'], _pin(row['sha256']))
+        if len(raw) != row['bytes']: raise SourceRefused('SOURCE_SIZE67')
+        actual.append({'path': row['path'], 'bytes': len(raw), 'sha256': digest(raw)})
+    five = [[x['path'].split('/')[-1], x['sha256']] for x in actual[:5]]
+    if digest(canonical(five)) != g.get('source_sha256'):
+        raise SourceRefused('ADMISSION5_SOURCE67')
+    workflow = reads._file(leaves, WORKFLOW, _pin(c.get('workflow_sha256')))
+    _workflow67(workflow, armed=not test_only)
+    run = reads._get('/actions/runs/' + run_id)
+    jobs = reads._get('/actions/runs/' + run_id + '/attempts/1/jobs'); rows = jobs.get('jobs')
+    if (str(run.get('id')) != run_id or run.get('run_attempt') != 1 or run.get('head_sha') != commit
+            or run.get('event') != 'workflow_dispatch' or run.get('actor', {}).get('id') != 273768139
+            or run.get('head_repository', {}).get('fork') is not False
+            or jobs.get('total_count') != 1 or type(rows) is not list or len(rows) != 1
+            or str(rows[0].get('id')) != c['job_id'] or rows[0].get('name') != 'read_only'
+            or str(rows[0].get('run_id')) != run_id or rows[0].get('head_sha') != commit):
+        raise SourceRefused('SOLE_CURRENT_JOB67')
+    if r.get('provider') != 'github' or r.get('path') != REGISTRY_PATH:
+        raise SourceRefused('PREEXISTING_REGISTRY67')
+    regleaves = reads._leaves(_pin(r.get('revision'), 40), admission.registry_tree)
+    reg = _object(reads._file(regleaves, REGISTRY_PATH, _pin(r.get('sha256'))))
+    expected = {'schema': 'PAYPROOF_PREEXISTING_REGISTRY_V3',
+                'client_id_sha256': _pin(g.get('client_id_sha256')),
+                'order_id_sha256': _pin(r.get('order_id_sha256')),
+                'canonical_effect_key_sha256': _pin(g.get('canonical_effect_key_sha256')),
+                'legacy_refs_sha256': _pin(r.get('legacy_refs_sha256')),
+                'legacy_grant_ids': g.get('legacy_grant_ids')}
+    if (set(reg) != set(expected) | {'provenance'} or any(reg.get(k) != v for k,v in expected.items())
+            or type(expected['legacy_grant_ids']) is not list):
+        raise SourceRefused('REGISTRY_LINEAGE67')
+    provenance = reg['provenance']
+    if (set(provenance) != {'provider', 'environment', 'receipt_sha256'}
+            or provenance['provider'] != 'paypal' or provenance['environment'] != 'sandbox'):
+        raise SourceRefused('REGISTRY_PROVIDER_ORIGIN67')
+    _pin(provenance['receipt_sha256'])
+    key = digest(canonical(['PayProof','sandbox','1419908202',g['client_id_sha256'],r['order_id_sha256'],'orders:read']))
+    if key != g['canonical_effect_key_sha256']: raise SourceRefused('CANONICAL_EFFECT_KEY67')
+    lifetime.guard('SOURCE67_RESULT')
+    return ProducedSource67(admission.grant_raw, admission.manifest_raw, identity, lifetime,
+                            workflow, _SOURCE67_TEST if test_only else _SOURCE67_NATIVE)
+
+
+def produce_native_source67(*, admission=None, job_token=None, oidc_token=None, lifetime=None):
+    from .github_oidc import (JobLifetime, NativeIdentityPolicy, SharedJobHTTPS,
+                              NativeOIDCVerifier, JWKSSnapshot, _PROVIDER)
+    if (type(admission) is not ProtectedAdmission67 or admission._seal is not _ADMISSION67
+            or type(lifetime) is not JobLifetime or job_token is None or oidc_token is None
+            or APPROVED_CLIENT_ID_SHA256_67 is None):
+        raise SourceRefused('NATIVE_INPUTS_UNARMED67')
+    g = _object(admission.grant_raw); c = g['caller']
+    if g.get('client_id_sha256') != _pin(APPROVED_CLIENT_ID_SHA256_67):
+        raise SourceRefused('APP_ADOPTION_BINDING67')
+    p = NativeIdentityPolicy(AUDIENCE, REPO+'/'+WORKFLOW+'@refs/heads/main','refs/heads/main',
+        c['source_commit'],c['source_commit'],'workflow_dispatch',SUBJECT,c['run_id'],'1',
+        c['not_before'],int(datetime.fromisoformat(g['expires_at']).timestamp()))
+    wire = SharedJobHTTPS(lifetime, scope=_PROVIDER)
+    try:
+        now = int(time.time())
+        status, raw = lifetime.invoke('SOURCE67_JWKS', lambda: wire.exchange(
+            'GET','token.actions.githubusercontent.com','/.well-known/jwks',headers={'Accept':'application/json'}))
+        if status != 200:
+            lifetime.mark('JWKS_STATUS67'); raise SourceUnknown('JWKS_STATUS67')
+        # Reuse the existing crypto implementation, with a genuine fixed HTTPS
+        # snapshot. This breaks the old policy-before-identity bootstrap cycle;
+        # no JobPolicyEvidence/native seal is minted until ALL source checks pass.
+        identity = lifetime.invoke('SOURCE67_VERIFY', lambda: NativeOIDCVerifier()._verify_environment(
+            oidc_token, policy=p, snapshot=JWKSSnapshot(raw,now,_PROVIDER),now=now,test_only=False))
+        reads = _ProviderReads67(wire, job_token, lifetime)
+        return _collect_bound67(reads,admission,identity,lifetime,test_only=False,now=now)
+    except BaseException:
+        lifetime.cleanup_once(); raise
+
+
+def produce_test_source67(*, collector, admission, identity, lifetime, now):
+    # Explicit test API cannot use the real provider path or mint a native seal.
+    if type(collector) is not PreparedSourceCollector:
+        raise SourceRefused('EXACT_TEST_COLLECTOR67')
+    try:
+        return lifetime.invoke('SOURCE67_TEST_ONLY', lambda: _collect_bound67(
+            collector,admission,identity,lifetime,test_only=True,now=now))
+    except BaseException:
+        lifetime.cleanup_once(); raise
+
+
+def to_job_policy67(source):
+    from .admission import JobPolicyEvidence, _JOB_NATIVE_SEAL, _JOB_SYNTHETIC_SEAL
+    if type(source) is not ProducedSource67: raise SourceRefused('TYPED_SOURCE67')
+    source.require(production=not source.test_only)
+    evidence = JobPolicyEvidence(source.identity.policy,source._grant_raw,source._manifest_raw,
+                                _JOB_SYNTHETIC_SEAL if source.test_only else _JOB_NATIVE_SEAL)
+    evidence.require(production=not source.test_only); return evidence
+
+
+NATIVE_SOURCE_FACTORY = produce_native_source67
+NATIVE_POLICY_ADAPTER = to_job_policy67
+
+def collect_native(*, admission=None, protected_token=None, manifest_delivery=None,
+                   runtime_identity=None, registry=None, job_token=None, oidc_token=None, lifetime=None):
+    # Old arbitrary input objects cannot be relabelled as provider evidence.
+    if any(x is not None for x in (protected_token,manifest_delivery,runtime_identity,registry)):
+        raise SourceRefused('UNTYPED_AUTHORITY_INPUT67')
+    return NATIVE_SOURCE_FACTORY(admission=admission,job_token=job_token,
+                                  oidc_token=oidc_token,lifetime=lifetime)
+
+def to_native_policy(prepared):
+    return NATIVE_POLICY_ADAPTER(prepared)
+
+# Private68 proposal: protected GitHub step delivery of static authorization.
+# No run/job ID is required in that external static document. Runtime IDs are
+# bound only after JWT verification and actual authenticated sole-job readback.
+_STEP68 = object()
+_SCOPE68 = ('PAYPROOF_STATIC_AUTHORIZATION68', 'PAYPROOF_STATIC_AUTHORIZATION68_SHA256')
+INVOCATION68 = 'python3 -c "from payproof.bootstrap_bridge import run_actions_step68; from payproof.job_policy_source42 import load_step_authorization68; run_actions_step68(authorization=load_step_authorization68())"'
+_workflow67_before68 = _workflow67
+
+
+def _workflow67(raw, *, armed):
+    w = _object(raw); jobs = w.get('jobs', {})
+    if set(jobs) != {'read_only'}:
+        raise SourceRefused('SOLE_JOB68')
+    job = jobs['read_only']; steps = job.get('steps', [])
+    if len(steps) != 2 or steps[1].get('id') != 'consume_native68':
+        return _workflow67_before68(raw, armed=armed)
+    maps = {n: '${{ secrets.'+n+' }}' for n in CREDENTIAL_NAMES67 + _SCOPE68}
+    maps['GITHUB_TOKEN'] = '${{ github.token }}'
+    if (w.get('on') != {'workflow_dispatch': {}} or w.get('permissions') != {}
+            or job.get('environment') != ENVIRONMENT or job.get('runs-on') != 'ubuntu-24.04'
+            or job.get('timeout-minutes') != 5 or 'env' in w or 'env' in job
+            or steps[0] != {'name':'Checkout exact reviewed source',
+                'uses':'actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3',
+                'with':{'ref':'${{ github.sha }}','persist-credentials':False}}
+            or steps[1].get('env') != maps or steps[1].get('shell') != 'bash'
+            or steps[1].get('run') != INVOCATION68):
+        raise SourceRefused('AUTHENTIC_STEP_DELIVERY_MAP68')
+    if armed and (job.get('permissions') != {'contents':'write','id-token':'write'}
+            or job.get('if') != "${{ github.run_attempt == 1 && github.event_name == 'workflow_dispatch' }}"):
+        raise SourceRefused('EXACT_ACTIVATION68')
+    return digest(raw)
+
+
+@dataclass(frozen=True, repr=False)
+class StaticStepAuthorization68:
+    _raw: bytes
+    _expected_sha256: str
+    _seal: object
+
+    def require(self, *, approved_client_id=None, now=None):
+        if self._seal is not _STEP68 or digest(self._raw) != _pin(self._expected_sha256):
+            raise SourceRefused('PROTECTED_STATIC_DELIVERY68')
+        d = _object(self._raw)
+        if set(d) != {'schema','scope','registry_tree','request_origin_policy','order_id'} or d['schema'] != 'PAYPROOF_STATIC_STEP_AUTHORIZATION68':
+            raise SourceRefused('STATIC_AUTHORIZATION_SCHEMA68')
+        g=d['scope'];c=g.get('caller',{})
+        if ('run_id' in c or 'job_id' in c or g.get('schema') != 'PAYPROOF_STATIC_READ_SCOPE68'
+                or g.get('project') != 'PayProof' or g.get('environment') != 'sandbox'
+                or g.get('operations') != ['orders:read'] or g.get('external_budget_usd') != '0.00'
+                or g.get('live_ai') is not False or c.get('audience') != AUDIENCE
+                or c.get('workflow_path') != WORKFLOW or c.get('environment') != ENVIRONMENT
+                or c.get('job_name') != 'read_only' or c.get('attempt') != '1'):
+            raise SourceRefused('EXACT_STATIC_SCOPE68')
+        expiry=datetime.fromisoformat(g['expires_at']);start=c.get('not_before')
+        if (type(start) is not int or type(now) is not int or expiry.tzinfo is None
+                or not start <= now < expiry.timestamp() <= start+300):
+            raise SourceRefused('STATIC_EXPIRY68')
+        if approved_client_id is None or _pin(approved_client_id) != g.get('client_id_sha256'):
+            raise SourceRefused('APP_ADOPTION_UNARMED68')
+        manifest=g.get('bundle_manifest')
+        if (type(manifest) is not list or len(manifest) != 8
+                or [x.get('path') for x in manifest] != list(PATHS)
+                or digest(canonical(manifest)) != g.get('bundle_sha256')):
+            raise SourceRefused('STATIC_MANIFEST68')
+        _pin(c.get('source_commit'),40);_pin(c.get('source_tree'),40);_pin(c.get('workflow_sha256'))
+        _pin(d['registry_tree'],40)
+        if d['request_origin_policy'] != {'scheme':'https','dns_suffix':'.actions.githubusercontent.com','port':443,'redirects':0,'audience':AUDIENCE}:
+            raise SourceRefused('FIXED_REQUEST_ORIGIN_POLICY68')
+        if (type(d['order_id']) is not str or re.fullmatch('[A-Z0-9]{1,36}',d['order_id']) is None
+                or digest(d['order_id'].encode()) != g.get('registry',{}).get('order_id_sha256')):
+            raise SourceRefused('EXACT_EXISTING_ORDER68')
+        return d
+
+
+def load_step_authorization68():
+    # Current unadopted code reads NOTHING. Future external provisioning of these
+    # exact two protected metadata secrets is an independent grant, never minted
+    # by this loader. Both are delivered directly by the reviewed step mapping;
+    # no root-only /run files or extra uploader/framework are needed.
+    if APPROVED_CLIENT_ID_SHA256_67 is None:
+        raise SourceRefused('APP_ADOPTION_UNARMED68')
+    import os
+    raw=os.environ.get(_SCOPE68[0]);pin=os.environ.get(_SCOPE68[1])
+    if type(raw) is not str or not 0<len(raw.encode())<=49152:
+        raise SourceRefused('PROTECTED_STEP_INPUT68_MISSING')
+    result=StaticStepAuthorization68(raw.encode(),_pin(pin),_STEP68)
+    result.require(approved_client_id=APPROVED_CLIENT_ID_SHA256_67,now=int(time.time()))
+    return result
+
+
+def bind_runtime_source68(authorization, *, identity, reads, lifetime, test_only, now):
+    # A projection, not a newly issued grant: retain original external bytes/hash
+    # and add ONLY the actual signed run and authenticated provider job ID.
+    d=authorization.require(approved_client_id=APPROVED_CLIENT_ID_SHA256_67,now=now)
+    from .github_oidc import VerifiedIdentity, _EVIDENCE
+    if (type(identity) is not VerifiedIdentity or identity._seal is not _EVIDENCE
+            or identity.test_only is not test_only):
+        raise SourceRefused('SIGNED_RUNTIME_IDENTITY68')
+    g=_object(canonical(d['scope']));c=g['caller'];run=_number(identity._claims.get('run_id'))
+    jobs=reads._get('/actions/runs/'+run+'/attempts/1/jobs');rows=jobs.get('jobs')
+    if (jobs.get('total_count')!=1 or type(rows) is not list or len(rows)!=1
+            or rows[0].get('name')!='read_only' or str(rows[0].get('run_id'))!=run
+            or rows[0].get('head_sha')!=c['source_commit']):
+        raise SourceRefused('OBSERVED_SOLE_JOB68')
+    c['run_id']=run;c['job_id']=_number(str(rows[0].get('id')))
+    g['schema']='PAYPROOF_JOB_NATIVE_CONTEXT_V1'
+    g['external_static_authorization68_sha256']=digest(authorization._raw)
+    raw=canonical(g)
+    admission=ProtectedAdmission67(raw,canonical(g['bundle_manifest']),d['registry_tree'],digest(raw),_ADMISSION67)
+    return _collect_bound67(reads,admission,identity,lifetime,test_only=test_only,now=now)

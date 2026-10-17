@@ -622,3 +622,222 @@ def job_native_entrypoint(*,policy=None,credentials=None,job_token=None,oidc_tok
         provider.bind(oidc_token,credentials,now=int(time.time()))
         return provider.consume_native(order_id)
     finally:lifetime.cleanup_once()
+
+# Private producer67 wiring. No real input acquisition or execution in this unit.
+def run_job_native67(*, admission=None, job_token=None, oidc_token=None,
+                     order_id=None, lifetime=None):
+    from .job_policy_source42 import produce_native_source67, to_job_policy67
+    from .admission import intake_step_scoped_credentials
+    # Default None is an intentional protected activation boundary, not a fake
+    # producer. A later admitted invoker must supply the authentic typed inputs.
+    if any(x is None for x in (admission,job_token,oidc_token,order_id,lifetime)):
+        raise IdentityRefused('EXTERNAL_NATIVE_BINDING67_REQUIRED')
+    try:
+        source = produce_native_source67(admission=admission,job_token=job_token,
+                                        oidc_token=oidc_token,lifetime=lifetime)
+        policy = to_job_policy67(source)
+        credentials = intake_step_scoped_credentials(custody=source)
+        return job_native_entrypoint(policy=policy,credentials=credentials,job_token=job_token,
+                                    oidc_token=oidc_token,order_id=order_id,lifetime=lifetime)
+    finally:
+        lifetime.cleanup_once()
+
+# Private68 actual invoker.
+from datetime import datetime
+# Static authorization delivery is a PROPOSAL for
+# independent review; no current external grant/configuration is asserted.
+def _request_route68(url, audience):
+    from urllib.parse import urlsplit, parse_qsl, urlencode, urlunsplit
+    if type(url) is not str or not 0<len(url)<=4096 or any(x in url for x in ('\r','\n','\\')):
+        raise IdentityRefused('OIDC_REQUEST_URL68')
+    u=urlsplit(url)
+    if (audience!='urn:payproof:orders-read:consumer-v3' or u.scheme!='https'
+            or u.username is not None or u.password is not None or u.port not in (None,443)
+            or not u.hostname or not u.hostname.endswith('.actions.githubusercontent.com')
+            or re.fullmatch('[a-z0-9.-]+',u.hostname) is None or u.fragment
+            or not u.path.startswith('/') or len(u.path)>2048):
+        raise IdentityRefused('OIDC_PROVIDER_ORIGIN68')
+    query=parse_qsl(u.query,keep_blank_values=True,strict_parsing=True)
+    if any(k.lower()=='audience' for k,v in query) or len(query)>16:
+        raise IdentityRefused('OIDC_AUDIENCE_REBIND68')
+    return u.hostname,urlunsplit(('', '', u.path, urlencode(query+[('audience',audience)]),''))
+
+
+# Private70 context is process-local validation evidence, never an external grant.
+_INVOKE70 = object()
+
+class _ValidatedInvocation70:
+    __slots__ = ('authorization','inputs','wire','lifetime','test_only','_seal')
+    def __init__(self, authorization, inputs, wire, test_only, seal):
+        if seal is not _INVOKE70:raise IdentityRefused('INTERNAL_INVOCATION70_REQUIRED')
+        object.__setattr__(self,'authorization',authorization)
+        object.__setattr__(self,'inputs',inputs)
+        object.__setattr__(self,'wire',wire)
+        object.__setattr__(self,'lifetime',wire.lifetime)
+        object.__setattr__(self,'test_only',test_only)
+        object.__setattr__(self,'_seal',seal)
+    def __setattr__(self,name,value):raise IdentityRefused('IMMUTABLE_INVOCATION70')
+    def __reduce_ex__(self,protocol):raise TypeError('NON_SERIALIZABLE_INVOCATION70')
+    def require(self,wire):
+        from . import job_policy_source42 as source
+        from .github_oidc import SharedJobHTTPS,_TEST,_PROVIDER
+        if (getattr(self,'_seal',None) is not _INVOKE70 or wire is not self.wire
+                or type(wire) is not SharedJobHTTPS or wire.lifetime is not self.lifetime
+                or type(self.authorization) is not source.StaticStepAuthorization68
+                or source.APPROVED_CLIENT_ID_SHA256_67 is None):
+            raise IdentityRefused('VALIDATED_INVOCATION70_REQUIRED')
+        if self.test_only:
+            if type(self.inputs) is not SyntheticStepInputs68 or wire._scope is not _TEST:
+                raise IdentityRefused('TEST_INVOCATION70_PROVENANCE')
+        elif (type(self.inputs) is not _NativeStepInputs68 or wire._scope is not _PROVIDER
+              or wire._factory is not http.client.HTTPSConnection):
+            raise IdentityRefused('NATIVE_INVOCATION70_PROVENANCE')
+        d=self.authorization.require(approved_client_id=source.APPROVED_CLIENT_ID_SHA256_67,now=int(time.time()))
+        self.lifetime.guard('INVOCATION70_PRE_EFFECT')
+        return d
+
+def _validated_invocation70(authorization,inputs,wire,*,synthetic_identity=None,synthetic_reads=None):
+    from . import job_policy_source42 as source
+    from .github_oidc import SharedJobHTTPS,_TEST,_PROVIDER
+    if (type(authorization) is not source.StaticStepAuthorization68
+            or source.APPROVED_CLIENT_ID_SHA256_67 is None or type(wire) is not SharedJobHTTPS):
+        raise IdentityRefused('UNADMITTED_INVOCATION70')
+    test_only=type(inputs) is SyntheticStepInputs68
+    if ((test_only and (wire._scope is not _TEST or synthetic_identity is None
+                        or not synthetic_identity.test_only
+                        or type(synthetic_reads) is not source.PreparedSourceCollector))
+            or (not test_only and (type(inputs) is not _NativeStepInputs68 or wire._scope is not _PROVIDER
+                or wire._factory is not http.client.HTTPSConnection
+                or synthetic_identity is not None or synthetic_reads is not None))):
+        raise IdentityRefused('EXACT_INVOCATION70_PROVENANCE')
+    invocation=_ValidatedInvocation70(authorization,inputs,wire,test_only,_INVOKE70)
+    invocation.require(wire)
+    return invocation
+
+
+def acquire_actions_oidc68(wire=None, request_url=None, request_token=None, audience=None, *, invocation=None):
+    # Reuse the SAME fixed HTTPS holder/lifetime/timeout/original-return/close
+    # primitives. This one provider-specific route never follows redirects.
+    from .github_oidc import SharedJobHTTPS, _PROVIDER, _TEST, TransportUnknown
+    import ssl
+    # Every direct entry validates app/static scope/provenance/same lifetime before
+    # reading URL/bearer or constructing TLS. Caller JSON/token cannot grant entry.
+    if type(invocation) is not _ValidatedInvocation70:
+        raise IdentityRefused('VALIDATED_INVOCATION70_REQUIRED')
+    d=invocation.require(wire)
+    if any(x is not None for x in (request_url,request_token,audience)):
+        raise IdentityRefused('CALLER_ACQUISITION_INPUT70_REFUSED')
+    audience=d['scope']['caller']['audience']
+    request_url=invocation.inputs.get('ACTIONS_ID_TOKEN_REQUEST_URL')
+    host,path=_request_route68(request_url,audience) # before bearer access
+    request_token=invocation.inputs.get('ACTIONS_ID_TOKEN_REQUEST_TOKEN')
+    if (type(wire) is not SharedJobHTTPS or wire._scope not in (_PROVIDER,_TEST)
+            or (wire._scope is _PROVIDER and wire._factory is not http.client.HTTPSConnection)
+            or type(request_token) is not str or not 0<len(request_token)<=4096
+            or any(c in request_token for c in ('\r','\n'))):
+        raise IdentityRefused('AUTHENTIC_OIDC_REQUEST68')
+    wire.lifetime.guard('ACQUIRE68_PRE_REQUEST')
+    if getattr(wire,'_oidc68_consumed',False) or wire.calls>=wire._limit_calls:
+        raise IdentityRefused('OIDC_ACQUISITION_ONCE68')
+    wire._oidc68_consumed=True;wire.calls+=1
+    holder={'conn':None,'close_claimed':False};pending=None;token=None
+    try:
+        context=wire._invoke('OIDC68_TLS',lambda remaining:ssl.create_default_context())
+        if context.verify_mode!=ssl.CERT_REQUIRED or not context.check_hostname:
+            raise IdentityRefused('OIDC68_TLS_POLICY')
+        wire._invoke('OIDC68_ALPN',lambda remaining:context.set_alpn_protocols(['http/1.1']))
+        conn=wire._invoke('OIDC68_CONSTRUCTOR',lambda remaining:wire._factory(host,443,timeout=remaining,context=context),on_owned=lambda value:holder.__setitem__('conn',value))
+        wire._invoke('OIDC68_REQUEST',lambda remaining:conn.request('GET',path,headers={'Authorization':'Bearer '+request_token,'Accept':'application/json'}),conn=conn)
+        response=wire._invoke('OIDC68_RESPONSE',lambda remaining:conn.getresponse(),conn=conn)
+        status=wire._invoke('OIDC68_STATUS',lambda remaining:response.status,conn=conn)
+        raw=wire._invoke('OIDC68_READ',lambda remaining:response.read(65537),conn=conn,legacy='OIDC68_PRIVATE_RAW')
+        if type(status) is not int or status!=200:
+            wire.lifetime.mark('OIDC68_STATUS_NO_REDIRECT');raise TransportUnknown('OIDC68_UNKNOWN')
+        from .github_oidc import _object
+        value=_object(raw,65536);token=value.get('value')
+        if set(value)!={'value'} or type(token) is not str or not 0<len(token)<=32768:
+            wire.lifetime.mark('OIDC68_RESPONSE_BOUNDS');raise TransportUnknown('OIDC68_UNKNOWN')
+    except BaseException as error:
+        pending=error
+    finally:
+        wire._close_once(holder)
+    if wire.lifetime.first_unknown is not None:
+        raise TransportUnknown('OIDC68_UNKNOWN') from None
+    if pending is not None:raise pending
+    return token
+
+
+class _NativeStepInputs68:
+    def get(self,name):
+        if name not in {'ACTIONS_ID_TOKEN_REQUEST_URL','ACTIONS_ID_TOKEN_REQUEST_TOKEN','GITHUB_RUN_ID','GITHUB_TOKEN'}:
+            raise IdentityRefused('STEP_INPUT_ALLOWLIST68')
+        import os
+        return os.environ.get(name)
+
+
+class SyntheticStepInputs68:
+    # Explicit fake values/handles only. Production invoker never accepts this.
+    def __init__(self,values):
+        if type(values) is not dict:raise IdentityRefused('SYNTHETIC_DICT68')
+        self.values=dict(values);self.reads=[]
+    def get(self,name):self.reads.append(name);return self.values.get(name)
+
+
+def _invoke_step68(authorization, inputs, wire, *, synthetic_identity=None, synthetic_reads=None):
+    from . import job_policy_source42 as source
+    from .github_oidc import (SharedJobHTTPS, _PROVIDER, _TEST, NativeIdentityPolicy,
+                              NativeOIDCVerifier,JWKSSnapshot)
+    if type(wire) is not SharedJobHTTPS:raise IdentityRefused('SAME_LIFETIME68')
+    test_only=type(inputs) is SyntheticStepInputs68
+    if ((test_only and (wire._scope is not _TEST or synthetic_identity is None
+                        or type(synthetic_reads) is not source.PreparedSourceCollector))
+            or (not test_only and (type(inputs) is not _NativeStepInputs68 or wire._scope is not _PROVIDER
+                                  or synthetic_identity is not None or synthetic_reads is not None))):
+        raise IdentityRefused('EXACT_STEP_PROVENANCE68')
+    invocation=_validated_invocation70(authorization,inputs,wire,synthetic_identity=synthetic_identity,synthetic_reads=synthetic_reads)
+    now=int(time.time());d=invocation.require(wire)
+    g=d['scope'];c=g['caller'];lifetime=wire.lifetime
+    try:
+        token=acquire_actions_oidc68(wire,invocation=invocation)
+        run=inputs.get('GITHUB_RUN_ID') # Input only, never identity evidence.
+        policy=NativeIdentityPolicy(source.AUDIENCE,source.REPO+'/'+source.WORKFLOW+'@refs/heads/main',
+            'refs/heads/main',c['source_commit'],c['source_commit'],'workflow_dispatch',source.SUBJECT,
+            source._number(run),'1',c['not_before'],int(datetime.fromisoformat(g['expires_at']).timestamp()))
+        if test_only:
+            identity=synthetic_identity
+            if identity.policy!=policy or not identity.test_only:raise IdentityRefused('EXACT_TEST_IDENTITY68')
+            reads=synthetic_reads
+        else:
+            status,raw=lifetime.invoke('INVOKER68_JWKS',lambda:wire.exchange('GET','token.actions.githubusercontent.com','/.well-known/jwks',headers={'Accept':'application/json'}))
+            if status!=200:lifetime.mark('INVOKER68_JWKS_STATUS');raise IdentityRefused('JWKS_STATUS68')
+            identity=lifetime.invoke('INVOKER68_SIGNATURE',lambda:NativeOIDCVerifier()._verify_environment(
+                token,policy=policy,snapshot=JWKSSnapshot(raw,now,_PROVIDER),now=now,test_only=False))
+            reads=source._ProviderReads67(wire,inputs.get('GITHUB_TOKEN'),lifetime)
+        produced=source.bind_runtime_source68(authorization,identity=identity,reads=reads,lifetime=lifetime,test_only=test_only,now=now)
+        evidence=source.to_job_policy67(produced)
+        from .admission import intake_step_scoped_credentials
+        if test_only:
+            # Same real custody validation boundary, which MUST reject TEST_ONLY
+            # before any PayPal environment lookup. Never mint native from fixture.
+            try:intake_step_scoped_credentials(custody=produced)
+            except ValueError:return {'status':'TEST_ONLY_CUSTODY_REFUSED','native':False,'acquisitions':1,'source_verified':True,'credential_reads':0,'OAuth':0}
+            raise IdentityRefused('TEST_NATIVE_ESCAPE68')
+        credentials=intake_step_scoped_credentials(custody=produced)
+        return job_native_entrypoint(policy=evidence,credentials=credentials,
+            job_token=inputs.get('GITHUB_TOKEN'),oidc_token=token,order_id=d['order_id'],lifetime=lifetime)
+    finally:
+        lifetime.cleanup_once()
+
+
+def run_actions_step68(*, authorization=None):
+    from . import job_policy_source42 as source
+    from .github_oidc import JobLifetime,SharedJobHTTPS,_PROVIDER
+    # Real workflow calls with an explicit typed delivery result, not all None.
+    # Default/unadopted invocation refuses before environment, token or network.
+    if type(authorization) is not source.StaticStepAuthorization68 or source.APPROVED_CLIENT_ID_SHA256_67 is None:
+        raise IdentityRefused('UNADMITTED_STEP68')
+    d=authorization.require(approved_client_id=source.APPROVED_CLIENT_ID_SHA256_67,now=int(time.time()))
+    seconds=min(300,datetime.fromisoformat(d['scope']['expires_at']).timestamp()-time.time())
+    lifetime=JobLifetime(seconds=seconds)
+    wire=SharedJobHTTPS(lifetime,scope=_PROVIDER)
+    return _invoke_step68(authorization,_NativeStepInputs68(),wire)

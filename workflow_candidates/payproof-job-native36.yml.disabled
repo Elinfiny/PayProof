@@ -1,14 +1,39 @@
-name: Private inactive job-native36
-on:
-  workflow_dispatch:
-permissions: {}
-jobs:
-  read_only:
-    if: ${{ false }}
-    runs-on: ubuntu-24.04
-    permissions: {}
-    steps:
-      - name: Refuse unbound native producers
-        run: exit 1
-# No environment/secret references, checkout, runtime tokens or native admission.
-# Enablement and genuine producer integration require separate review/publication.
+{
+  "name": "PayProof private actual invoker68 INACTIVE",
+  "on": {
+    "workflow_dispatch": {}
+  },
+  "permissions": {},
+  "jobs": {
+    "read_only": {
+      "if": "${{ false }}",
+      "runs-on": "ubuntu-24.04",
+      "timeout-minutes": 5,
+      "environment": "payproof-sandbox-readonly",
+      "permissions": {},
+      "steps": [
+        {
+          "name": "Checkout exact reviewed source",
+          "uses": "actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3",
+          "with": {
+            "ref": "${{ github.sha }}",
+            "persist-credentials": false
+          }
+        },
+        {
+          "name": "Typed protected static delivery, OIDC acquisition and existing consumer68",
+          "id": "consume_native68",
+          "shell": "bash",
+          "env": {
+            "PAYPROOF_PAYPAL_SANDBOX_CLIENT_ID": "${{ secrets.PAYPROOF_PAYPAL_SANDBOX_CLIENT_ID }}",
+            "PAYPROOF_PAYPAL_SANDBOX_CLIENT_SECRET": "${{ secrets.PAYPROOF_PAYPAL_SANDBOX_CLIENT_SECRET }}",
+            "GITHUB_TOKEN": "${{ github.token }}",
+            "PAYPROOF_STATIC_AUTHORIZATION68": "${{ secrets.PAYPROOF_STATIC_AUTHORIZATION68 }}",
+            "PAYPROOF_STATIC_AUTHORIZATION68_SHA256": "${{ secrets.PAYPROOF_STATIC_AUTHORIZATION68_SHA256 }}"
+          },
+          "run": "python3 -c \"from payproof.bootstrap_bridge import run_actions_step68; from payproof.job_policy_source42 import load_step_authorization68; run_actions_step68(authorization=load_step_authorization68())\""
+        }
+      ]
+    }
+  }
+}
