@@ -1,0 +1,63 @@
+# SOURCE-ONLY CANDIDATE. No active .github path or artifact upload in84.
+# Activation requires independent exact source/nonce/runner/storage/cost review.
+name: PayProof one source test-build candidate84
+on:
+  workflow_dispatch:
+    inputs:
+      expected_head:
+        description: Full reviewed source commit also bound to this workflow invocation
+        required: true
+        type: string
+      admission_nonce:
+        description: Exact once-only reviewed build nonce
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: payproof-contest-source-build-once
+  cancel-in-progress: false
+jobs:
+  source_build:
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.actor == 'Elinfiny' && github.actor_id == '273768139' &&
+      github.repository == 'Elinfiny/PayProof' && github.repository_id == '1419908202' &&
+      github.ref == 'refs/heads/main' && github.run_attempt == 1 &&
+      github.sha == inputs.expected_head &&
+      inputs.admission_nonce == 'PAYPROOF-CONTEST84-SOURCE-BUILD-ONCE'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact reviewed invocation source
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+        with:
+          ref: ${{ inputs.expected_head }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Build allowlisted source and smoke packaged fixture without installation
+        env:
+          REVIEWED_HEAD: ${{ inputs.expected_head }}
+          DISTINCT_EVENT_ID: CONTEST84-HOSTED-${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$REVIEWED_HEAD"
+          source_tree="$(git rev-parse HEAD^{tree})"
+          build_root="$RUNNER_TEMP/payproof-build84-once"
+          mkdir -m 700 "$build_root"
+          python3 -I -S -B tools/contest_build84.py --root . --source-commit "$REVIEWED_HEAD" --source-tree "$source_tree" --output "$build_root/PayProof_contest84.zip"
+          python3 -I -S -B - "$build_root" <<'PY'
+          import pathlib, stat, sys, zipfile
+          root=pathlib.Path(sys.argv[1])
+          with zipfile.ZipFile(root/'PayProof_contest84.zip') as archive:
+              for info in archive.infolist():
+                  p=pathlib.PurePosixPath(info.filename)
+                  if p.is_absolute() or '..' in p.parts or stat.S_ISLNK(info.external_attr >> 16):
+                      raise ValueError('Unsafe archive')
+              archive.extractall(root/'unpacked')
+          (root/'private-data').mkdir(mode=0o700)
+          PY
+          timeout --signal=INT --kill-after=5s 30s python3 -I -S -B "$build_root/unpacked/PayProof_contest84/tools/contest_launcher84.py" --smoke --data-dir "$build_root/private-data" --event-id "$DISTINCT_EVENT_ID"
+      # No upload-artifact/cache/service/deploy/provider/secret step. Before any
+      # transfer, separately admit storage quota, retention and a zero-cost route.
