@@ -1,108 +1,92 @@
-# PayProof reproducible source test-build
+# PayProof current local-model source preview105
 
-This build is a runnable **synthetic preview**, not a finished contest entry.
-It does not connect to PayPal or an AI model. An UNKNOWN order does not prove
-payment. The fixture webhook uses an explicitly labeled verification stub.
-No Netcup server or public hosting is needed to run this preview.
+This private ZIP is a runnable synthetic preview, not a finished contest entry.
+It includes the existing local learned advisory model and pinned CC0 training
+corpus. The model is disabled by default; --local-ai explicitly enables it.
+It uses no external AI service or PayPal connection and cannot execute payments.
+UNKNOWN evidence remains UNKNOWN; model advice is never financial authority.
 
-## Run the supplied ZIP
+## Run this package
 
-Use Python 3.11 or newer with standard-library SQLite. Extract the ZIP into a
-new directory; keep its files unchanged. Create an empty private data directory
-outside the extracted build (0700 on Linux/macOS), then run from its root:
-
-```sh
-mkdir -m 700 /tmp/payproof-review-new
-python3 -I -S -B tools/contest_launcher84.py --data-dir /tmp/payproof-review-new --port 8765
-```
-
-Open http://127.0.0.1:8765 on that same machine. The existing fixture interface
-shows deterministic explanations, simulated order scenarios and JSON export.
-Ctrl+C closes the local server. The data directory contains only synthetic data;
-retain it for review. A subsequent run needs a different empty private directory.
-Do not point this launcher at existing databases or real user data.
-
-The launcher validates every manifest payload before importing the package,
-always chooses the existing `fixture` mode and binds only to loopback. It cannot
-grant sandbox authority or replace the sealed native host context. This local
-source-run route is not a browser/site access workaround or a deployed service.
-Windows users need a private directory/compatible permission semantics; this
-specific launcher qualification uses POSIX 0700/0600 and is not Windows proof.
-
-## Dependencies and rebuild
-
-The fixture entry is exercised with `-I -S -B`: user/site packages are disabled.
-The actual import graph of server/core/admission/paypal/service/fixtures loads
-only standard-library modules in fixture mode. Native identity modules import
-`cryptography`, and the unchanged `pyproject.toml` declares exactly
-`cryptography==50.0.2`. This build neither drops that requirement nor supplies a
-crypto stub. Native mode is not exposed by this launcher. No new dependency
-download, install or compatibility claim is made for a different interpreter.
-Do not run an unbounded `pip install .` as part of this source preview:
-`setuptools>=65` in the original package metadata is not an offline lock.
-
-From an exact reviewed Git checkout containing these tools, inspect the commit
-and tree with `git rev-parse HEAD` and `git rev-parse HEAD^{tree}`, then run:
+Use Python3.11+ with standard-library SQLite and compatible POSIX private-directory
+semantics. Extract PayProof_current_local_model105.zip into a new directory;
+keep its files unchanged. Create a fresh empty private data directory outside
+the extracted root, then run from PayProof_contest84/:
 
 ```sh
-python3 -I -S -B tools/contest_build84.py --root . --source-commit EXACT_COMMIT --source-tree EXACT_TREE --output /tmp/PayProof_contest_new.zip
+mkdir -m 700 /tmp/payproof-local-model-new
+python3 -I -S -B tools/contest_launcher84.py --data-dir /tmp/payproof-local-model-new --port 8765 --local-ai
 ```
 
-Replace both placeholders with the inspected full identifiers. The output must
-be absent. The builder uses local `git ls-tree` only, or a separately verified
-complete inventory supplied with `--inventory`; it never fetches or installs.
-It checks the full inventory Merkle root and each allowlisted source Git blob.
-The ZIP includes package/web assets, LICENSE, original setup metadata, these
-tools/instructions, a disabled execution candidate, source identifiers and a
-complete SHA-256 manifest. No secret, admission, database, cache, saved receipt,
-old qualification archive or installation directory is included. `SOURCE84.json`
-is integrity metadata, never authority. Keep any partial failed output; do not
-retry into it or treat it as a successful build.
+Open http://127.0.0.1:8765 on the same machine. Removing only --local-ai keeps
+the default deterministic behavior. The UI supports synthetic scenarios and
+JSON export; Ctrl+C closes the server. Each subsequent run needs a new empty
+private data directory. Retain synthetic data for review; never point this
+launcher at real data. Host/Origin/CSP/fixture-only guards remain unchanged.
+This source preview needs no server, public hosting or installer. Windows and
+other interpreter/platform combinations are not qualified by this build.
 
-The bounded smoke entry is `tools/contest_launcher84.py --smoke --data-dir
-ABSOLUTE_EMPTY_PRIVATE_DIR --event-id DISTINCT_SYNTHETIC_ID`, also using
-`python3 -I -S -B`. It starts the packaged fixture server on an ephemeral
-loopback port, reads initial UNKNOWN state, delivers one new **synthetic**
-unavailable-provider event, confirms UNKNOWN/NEEDS_RECONCILIATION and closes
-the server. The exact84 local case is consumed; do not rerun it to reproduce
-the stored receipt. Future hosted qualification needs its distinct admission,
-fresh namespace and event identifier.
+## Exact current source and rebuild
 
-## Remaining contest integrations
+SOURCE84.json is the authoritative build provenance: schema
+PAYPROOF_CURRENT_LOCAL_MODEL_SOURCE105, exact source_commit and source_tree,
+and all27 included source paths with Git blob/SHA256/size pins. These actual
+final-candidate identifiers are written by the builder after source publication;
+they are not self-embedded in this document. MANIFEST.csv has28 rows and the
+ZIP29 members, including provenance and the manifest. The historical84 base
+commit3d7eb63fbfaf8c3cb9223effecac41f24c6623e3 and tree
+fc3f4ce717209193eeaf2591020abd28420ae154 are labeled historical_84_base_*;
+neither is claimed as this new package's current source. The accepted pre105
+baseline was maina15d904bc77b742f518bc22058fee6e04fb64c62/tree
+61f56ad55e3a4082f4ea90c414d7f051e46f8c4f.
 
-Real free PayPal sandbox integration must be central to the submitted product.
-The existing SandboxPayPal adapter still requires authentic application/owner
-association, secret custody, sealed expiring source-bound host admission,
-approved operations and registered-order scope. Application identity and custody
-are unproved here; default loader remains UNADOPTED and real pilot UNADMITTED.
-Do not fabricate signatures, weaken expiry/allowlists, reuse a refused caller,
-put credentials in source/artifacts, or infer permission from a logged-in page.
-The next safe effect is an independently admitted existing sandbox route with
-authentic nonsecret app/owner metadata and a supported secret-custody mechanism,
-then separately scoped sandbox calls. Real money endpoints remain excluded.
+From the exact reviewed Git checkout, inspect git rev-parse HEAD and
+git rev-parse HEAD^{tree}, then use their full actual values:
 
-The service's ExplanationPort is a future integration boundary, not an actual
-AI tool/model integration. A future reviewed adapter must call an admitted real
-model using sanitized source-bound facts only, without payment tools, preserve
-uncertainty and enforce a numeric usage cap. Current external/model ceiling is
-USD 0; sponsor credits or a USD5 proposal are not an approved budget. No model
-call or key creation is performed in84.
+```sh
+python3 -I -S -B tools/contest_build84.py --root . --source-commit EXACT_REVIEWED_COMMIT --source-tree EXACT_REVIEWED_TREE --output /tmp/PayProof_current_local_model105.zip
+```
 
-A complete runnable test-build is an alternative to public hosting under the
-rules reviewed by Auditor, but this synthetic build alone does not satisfy
-PayPal/AI integration. Final entry still needs actual integrations, free working
-judge access through judging, public licensed source/setup under its publication
-gate, English demonstration/video and verified submission. Reconfirm the
-official deadline before final submission: 12 November 2026, 20:00 UTC
-(22:00 Europe/Bucharest). Official rules: https://paypalaihackathon.devpost.com/rules
+The output must be absent. The builder uses local git ls-tree only or an
+independently verified full83-leaf inventory passed with --inventory; it checks
+the complete Git Merkle root and every included source body. Only the three
+missing canonical model files were added to the closed payload allowlist.
+Compressed and aggregate uncompressed sizes remain <=786432B, each source
+<=65536B, with no symlink/duplicate/undeclared payload, installer, dependency
+directory, receipt, live database, secret or admission. Partial output is
+retained on failure; it must not be retried or called successful.
 
-## Hosted candidate and activation gate
+The current packaged-entry qualification uses one NEW synthetic unavailable
+event, --smoke --local-ai, fresh private0700 data/DB, and separate40s parent
+containment around20s work plus5s bounded server cleanup. It records every
+original HTTP response before assertions, requires local model READY and pinned
+fingerprint0513952a8592ad96858b70d87da5cf3d8079b2c5e53e4e38b8dbed2e90d30662,
+UNKNOWN/advisory abstention, events1/effects0, serverclosed/no livethread,
+and no external connection, secret open or cryptography import. Historical84
+qualification is valid only for its historical ZIP. Do not replay the consumed
+PAYPROOF-PACKAGED105-LOCALMODEL-ONCE case; source/packaged qualification results
+are reported separately from future interactive preview use. Default-off84
+smoke, model benchmarks and renderer104 are not rerun105.
 
-`workflow_candidates/payproof-contest-build84.yml.disabled` is source only.
-It is not under `.github/workflows`, has not run, and grants no native or custody
-authority. Before activation, independently review the exact source commit,
-workflow and one-run nonce; qualify GitHub included runner minutes/artifact
-storage/retention and enforce zero new spend. The candidate uses no installer,
-cache, provider environment, secrets or id-token. Artifact upload/transfer is
-deliberately absent until a separately reviewed storage/cost route is admitted.
-No real PayPal call or actual AI integration is hidden inside a build job.
+The fixture import graph uses standard-library modules under -I -S -B.
+The unchanged pyproject still declares cryptography==50.0.2 for native identity
+modules; that dependency is neither removed nor stubbed. No pip/npm/download
+or dependency installation is part of this package qualification.
+
+## Remaining real integrations
+
+Real free PayPal Sandbox integration remains central and unqualified. The
+existing adapter requires authentic nonsecret app/owner association, supported
+secret custody and the existing sealed source-bound host admission/registered
+order scope. Retained historical handles and login do not prove custody; no
+new PayPal account read/login/OAuth/API/key/payment operation is admitted105.
+The smallest next provider step must come from the existing authentic access
+and custody evidence under a distinct actual scope, without inventing another
+broker/certificate or replaying UNKNOWN effects.
+
+Included local inference is real local model assistance. External model API
+integration is absent; no model/API cash grant or payment tools are implied.
+Public licensed source/setup, judge access, English video, real Sandbox
+integration and final submission remain open. This build makes no hosted,
+public, human-visual or finished-contest qualification claim. The disabled
+workflow candidate remains historical source only; no CI/job is started105.
