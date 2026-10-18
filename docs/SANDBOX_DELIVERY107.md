@@ -1,4 +1,4 @@
-# Portable and cloud operator-managed Sandbox read (candidate108)
+# Portable and provider-managed Owner Sandbox workflow (candidate109)
 
 This prospective profile belongs to the person operating a private process.
 It is independent of our private checkpoint store, Netcup and issuer keys.
@@ -94,7 +94,7 @@ buyer approval path with real app/account ownership, lineage and durable once
 record, followed by this read-only qualification. Creating, approving or capturing
 an order is outside107 and must not be improvised or represented by fixture data.
 
-## Noninteractive GitHub cloud entry108: implemented, inactive, adapter unqualified
+## Historical cloud profile108: preserved, inactive and unqualified
 
 `workflow_candidates/payproof-sandbox-delivery107.yml.disabled` remains outside
 the active workflow directory, manual-only and literally `if: false`. No runner,
@@ -188,6 +188,86 @@ Official references used for design (not current execution/custody authority):
 [GitHub protected secrets](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets).
 
 ## Remaining finish route
+
+### Selected109 contract: provider-managed Owner workflow
+
+The implemented GITHUB_OWNER_WORKFLOW109 profile deliberately changes the operator
+trust contract for a new path. Its owner-workflow-preflight109 and
+github-owner-workflow109 CLI entries run in a source-reviewed protected GitHub
+process; no TTY/getpass/Owner-run commands, heap-transfer bridge, runtime Library
+reader, new issuer/key/broker, signing service, OIDC or write permission is needed.
+It reuses the stable consumed identity, private session, fixed two-call reader,
+Store and nonfinancial local advisory. Old native67/OwnedDispatch108/default
+loaders and seals remain unchanged and unqualified; no missing exception is
+caught and converted into success, and no old native seal is minted.
+
+The prospective authority boundary is the separately admitted Owner launch,
+GitHub-processed main/manual/Owner guards, reviewed checkout, protected environment
+and exact step-scoped credential delivery. Public JSON, flags, references and ENV
+values are consistency data, not independent provider/custody/vendor/kernel proof.
+No HTTP endpoint creates authority; there is no isolation claim against the Owner
+or malicious code inside the same trusted process. Process-private WorkflowLaunch109
+records that explicit origin and cannot serialize; synthetic evidence cannot enter
+the real profile. Source/inert results never qualify actual runtime or credentials.
+
+Before lookup, a bounded exact-key envelope contains only configuration/admission.
+Checks bind Elinfiny/PayProof/id1419908202/owner273768139/actor273768139,
+main/workflow_dispatch/attempt1/job SLUG sandbox_read, actual Git HEAD/tree,
+GITHUB_SHA/workflow origin/source release and critical source/workflow bytes to
+independently supplied post-publication pins. The active-path proposal stays
+.github/workflows/payproof-sandbox-delivery108.yml. A public asserted actual run ID
+or numeric job ID is an extra forbidden field. The actual run ID comes from provider
+context; numeric job ID is read canonically AFTER dispatch outside the job. Never
+print whole GitHub context/token. JSON is passed as ENV/file data, never shell code.
+No future commit's own SHA is embedded in itself.
+
+Feasible external-once ordering: PayPal V1 conditionally writes and independently
+verifies own INTENT→CONSUMED before one supported dispatch selection, on stable
+app/order/read identity and exact source/admission/workflow/target/callbudget2/
+window120/cash0. After the provider response, it binds the first real run and reads
+the numeric job ID; Auditor verifies consumed admission/source/logs/receipt. Unknown
+dispatch is reconciled once, never retried/relabelled. Runtime does NOT authenticate
+private CAS by parsing its public hash. CAS controls the sole authorized sender,
+not provider-global exactly-once or a malicious Owner/admin creating other manual
+runs. Ephemeral job SQLite remains separate from the persistent consumed record.
+
+The new template remains OUTSIDE .github, literally if:false, manual only,
+ubuntu-24.04/5min/contents:read, exact pinned checkout/persistfalse, existing
+payproof-sandbox-readonly environment. New-profile source/caller/preflight checks
+run before the already-gated runtime step and repeat before credential lookup.
+Only the two credential names are mapped to that step; three allowlisted public
+workflow-context fields contain no credential. Actual environment settings and
+applicable native security confirmation/custody are not assumed. Future reviewed
+dormant→active→dormant changes are limited to the exact move/job-gate contract,
+independent actual head/tree/workflow pins, one consumed dispatch and verified
+dormant restoration. No activation, dispatch, secret lookup or API109 occurred.
+
+Concrete next protected decision: independently review the exact existing branch
+review/payproof-sandbox-delivery107-20261018 and its ONE ordinary private109 PR.
+Actual immutable head/tree/PR are recorded in the project result after provider
+publication, never guessed/circularly embedded here. Then qualify Elinfiny/PayProof /
+payproof-sandbox-readonly and genuine Sandbox app allocation plus authentic order/
+amount/currency/lineage. Verify NAME/presence only for
+PAYPROOF_PAYPAL_SANDBOX_CLIENT_ID and PAYPROOF_PAYPAL_SANDBOX_CLIENT_SECRET.
+If indispensable, one secure Owner entry is directly into the reviewed provider
+field, never config/hash/command work or technical relay. No old64/66/89/90 refused
+surface is reused through another caller. If there is no real order, separately
+review one minimal Sandbox-only acquisition/create and buyer-approval path with
+durable authentic lineage; creation/approval/capture remain unadmitted109.
+
+Bound the future read to one OAuth+one exact order GET/120sec/cash0/externalmodel0,
+no payment actions, first sanitized code/stage, lateUNKNOWN/no next call, privately
+retained provider originals and dropped references with separate cleanup. No
+token-derived secret data is exported; no kernelstop/forensic RAM-zeroization
+guarantee. Never reset the external consumed record. Current109 asks no Owner action.
+The optional public judge-owned Sandbox route remains independent of Owner secrets,
+private checkpoints and vendor attestations. Prior104/105/model proofs remain prior
+proofs; the new109 group checks existing nonfinancial advisory abstention without
+model fitting/retraining/rebenchmarking or replaying old groups.
+
+Official design references, not actual provider proof:
+[contexts](https://docs.github.com/en/actions/reference/workflows-and-actions/contexts)
+and [environments](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments).
 
 Independent review of this exact candidate → actual operator/protected-custody
 approval and secure input only if indispensable → one authentic Sandbox order
