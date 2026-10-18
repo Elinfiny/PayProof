@@ -1,50 +1,34 @@
-# Contest delivery status — private candidate121, 18 October 2026
+# Contest release preparation — 19 October 2026
 
-This updates the 14 October analysis using accepted real read117 and panel QA120.
-It reuses the existing official review; it is not a fresh eligibility decision or
-new terms acceptance. Primary sources: [official rules](https://paypalaihackathon.devpost.com/rules)
-and [official FAQ](https://paypalaihackathon.devpost.com/details/faqs).
-Observed deadline: **12 November 2026, 12:00 PST / 22:00 Europe/Bucharest**.
-Reconfirm official conditions before any submission decision.
+PayProof remains a private candidate. A real 160-second English application film
+exists privately; public source access, public YouTube upload, eligibility/terms,
+and actual entry submission have not been completed.
 
-## Three evidence levels
+Official [rules](https://paypalaihackathon.devpost.com/rules) and
+[FAQ](https://paypalaihackathon.devpost.com/details/faqs) were reviewed during
+release preparation. Submission deadline: 12 November 2026, 20:00 UTC
+(12:00 PST / 22:00 Europe/Bucharest). Free judge access is required through the
+end of judging on 15 December 2026, 16:00 UTC (08:00 PST / 18:00 Bucharest).
+Recheck the current official form and conditions before a binding submission.
 
-1. **Offline interactive fixture:** runnable local source, explicitly synthetic
-   scenarios, deterministic wording by default; no PayPal connection. The optional
-   included local learned model is disabled by default and is not an external API.
-2. **Recorded real117:** one historical authentic Sandbox order read, 18 October
-   2026 19:36:29.277776Z; state CONFLICT, model READY, priority unknown,
-   financial_authority false, payment_actions empty. The saved panel shows
-   “No payment verified.” Inner validation cause was not retained. This is evidence
-   of a real read plus local advisory abstention, not a paid lifecycle.
-3. **Unproved:** successful payment/capture, authentic webhook round trip,
-   current live session, hosted judge access, public entry, video and submission.
-
-The private reviewer ZIP is bound to the exact candidate PR/head/tree by
-`SOURCE84.json`. It is a deliverable for review, not registration or submission.
-The historical [117 run](https://github.com/Elinfiny/PayProof/actions/runs/39159527253)
-and [120 panel QA](https://github.com/Elinfiny/PayProof/actions/runs/39163115561)
-support only their stated scopes; build121 repeats neither.
-
-## Official requirement and remaining condition
-
-| Requirement from the retained rules/FAQ review | Current evidence / still required |
+| Requirement | Current concrete material / remaining step |
 | --- | --- |
-| New or substantially updated working application | Private application and reviewer source package exist. Independent review must assess the actual candidate and working judge experience; packaging alone does not settle compliance. |
-| Actual AI integration with central PayPal Sandbox functionality | Local model code and real recorded117 exist, with honest abstention. Do not infer that this limited conflict result meets the official integration requirement. A qualifying integrated demonstration and independent requirement review remain open. No external model API is integrated. |
-| Public source with an open-source license | MIT license included; repository remains private. Public release needs its separate existing review and authority. |
-| Runnable judge access and complete setup | Private ZIP and POSIX/Python setup provided. Judge access must actually be made available and verified. Complete setup can satisfy access; public hosting is optional under the retained FAQ analysis. HTTP startup was not tested121. |
-| Public YouTube demonstration under three minutes | English ~2:40 script is ready in demo.md. Actual footage, timing, public YouTube upload and accessible final link remain undone. A script is not a video. |
-| Eligible participant and accepted terms | Romania was not among named exclusions in the retained review; age, conflicts, applicable restrictions and final eligibility are unverified. No terms accepted. |
-| Complete timely entry | Required form, final links, descriptions and actual submission remain undone. No registration/submission is claimed. |
+| Functioning application using PayPal centrally and a chosen AI tool/model | Read-only service source, local learned model, interactive synthetic workflow, and historical real Sandbox read with model READY and abstention. Independent scoped review permits release preparation; it is not a final eligibility or jury decision. |
+| Working judge access | Complete source fixture and opt-in local-AI instructions in README and JUDGE_GUIDE. Public anonymous source access still needs verification. Hosting is optional; no hosted session is claimed. |
+| Public open-source repository | Existing canonical repository and unchanged MIT license. It remains private pending exposure review and separate publication authority. |
+| English demonstration on public YouTube, below three minutes | Actual private 2:40 film; prepared title and description in YOUTUBE.md. Actual upload, public visibility, and accessible link remain pending. |
+| Project explanation and tools | Actual English freelancer-focused story, technology list, and five-criterion evidence mapping in SUBMISSION.md. |
+| Eligibility, rights, terms, final form | Personal facts, any representation authority, actual custom questions and legal acceptance remain unconfirmed. No submission has been made. |
 
-The presentation connects the freelancer's evidence problem, central PayPal
-semantics, actual advisory abstention and working UI to those requirements.
-No inferred boolean, model label or two viewport passes confers eligibility.
-Financial success is not claimed; a distinct protected scope would be needed for
-any further provider operation. Existing consumed113/117/120 effects cannot be
-replayed to obtain nicer footage. No new provider, CI, browser or model run121.
+The rules require a meaningful PayPal and AI implementation, not a particular
+external AI vendor. The retained review found no universal requirement for a
+successful paid capture or authentic webhook. Those remain unproved capabilities;
+they are not invented prerequisites for release preparation. A limited real
+CONFLICT result is not settlement, a positive model prediction, or proof of a
+complete paid lifecycle. The exact inner conflict cause was not retained.
 
-Historical technical primary sources: [order details](https://developer.paypal.com/api/orders/v2/orders-get),
-[webhook signature verification](https://developer.paypal.com/api/webhooks/v1/verify-webhook-signature-post).
-Prepared webhook code and synthetic fixtures do not establish an authentic webhook.
+The film depicts the application operating locally with explicit synthetic and
+recorded labels. Public release review must consider the entire existing
+repository, reachable history, and associated surfaces. Updating a current README
+does not sanitize history or certify old logs. No original unknown/failed result
+is rewritten, and no historical operation is re-executed by these documents.
