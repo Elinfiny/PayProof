@@ -1,0 +1,70 @@
+name: PayProof owner-managed Sandbox fixture111 INACTIVE
+on:
+  workflow_dispatch:
+    inputs:
+      public_configuration:
+        description: Reviewed configuration/admission envelope; no credentials or authority
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  sandbox_fixture:
+    if: false # INACTIVE: future activation requires separately reviewed exact delta.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: payproof-sandbox-readonly
+    steps:
+      - name: Guard actual caller before checkout and protected injection
+        env:
+          ACTUAL_EVENT: ${{ github.event_name }}
+          ACTUAL_REPOSITORY: ${{ github.repository }}
+          ACTUAL_REPOSITORY_ID: ${{ github.repository_id }}
+          ACTUAL_OWNER_ID: ${{ github.repository_owner_id }}
+          ACTUAL_ACTOR_ID: ${{ github.actor_id }}
+          ACTUAL_ATTEMPT: ${{ github.run_attempt }}
+          ACTUAL_REF: ${{ github.ref }}
+        run: |
+          test "$ACTUAL_EVENT" = workflow_dispatch
+          test "$ACTUAL_REPOSITORY" = Elinfiny/PayProof
+          test "$ACTUAL_REPOSITORY_ID" = 1419908202
+          test "$ACTUAL_OWNER_ID" = 273768139
+          test "$ACTUAL_ACTOR_ID" = 273768139
+          test "$ACTUAL_ATTEMPT" = 1
+          test "$ACTUAL_REF" = refs/heads/main
+      - name: Checkout actual source for independent release pin comparison
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Prepare bounded public data only
+        env:
+          PUBLIC_CONFIGURATION: ${{ inputs.public_configuration }}
+        run: |
+          umask 077
+          mkdir -p "$RUNNER_TEMP/payproof108"
+          python3 -I -c 'import os,pathlib; b=os.environ["PUBLIC_CONFIGURATION"].encode(); assert len(b)<=16384; pathlib.Path(os.environ["RUNNER_TEMP"],"payproof108","envelope109.json").write_bytes(b)'
+      - name: Fixture111 whole source and caller preflight BEFORE credentials
+        env:
+          PAYPROOF_OWNER_ID109: ${{ github.repository_owner_id }}
+          PAYPROOF_WORKFLOW_REF109: ${{ github.workflow_ref }}
+          PAYPROOF_WORKFLOW_SHA109: ${{ github.workflow_sha }}
+        run: |
+          python3 -I -c 'import runpy,sys; sys.path.insert(0,"."); sys.argv=["delivery108","fixture-preflight111","--envelope",sys.argv[1]]; runpy.run_module("tools.sandbox_delivery107",run_name="__main__")' "$RUNNER_TEMP/payproof108/envelope109.json"
+      # Fixture111 trusts the explicitly reviewed provider-managed Owner process.
+      # External own CAS controls the sender; public hashes/ENV do not prove custody.
+      - name: Single already-gated provider-managed Owner fixture111
+        env:
+          PAYPROOF_OWNER_ID109: ${{ github.repository_owner_id }}
+          PAYPROOF_WORKFLOW_REF109: ${{ github.workflow_ref }}
+          PAYPROOF_WORKFLOW_SHA109: ${{ github.workflow_sha }}
+          PAYPROOF_PAYPAL_SANDBOX_CLIENT_ID: ${{ secrets.PAYPROOF_PAYPAL_SANDBOX_CLIENT_ID }}
+          PAYPROOF_PAYPAL_SANDBOX_CLIENT_SECRET: ${{ secrets.PAYPROOF_PAYPAL_SANDBOX_CLIENT_SECRET }}
+        run: |
+          python3 -I -c 'import runpy,sys; sys.path.insert(0,"."); sys.argv=["delivery108","github-sandbox-fixture111","--envelope",sys.argv[1],"--database",sys.argv[2],"--journal",sys.argv[3]]; runpy.run_module("tools.sandbox_delivery107",run_name="__main__")' "$RUNNER_TEMP/payproof108/envelope109.json" "$RUNNER_TEMP/payproof108/orders.sqlite" "$RUNNER_TEMP/payproof108/once.sqlite"
+      - name: Drop ephemeral files on success or failure
+        if: always()
+        run: |
+          rm -f -- "$RUNNER_TEMP/payproof108/envelope109.json" "$RUNNER_TEMP/payproof108/orders.sqlite" "$RUNNER_TEMP/payproof108/orders.sqlite-journal" "$RUNNER_TEMP/payproof108/once.sqlite" "$RUNNER_TEMP/payproof108/once.sqlite-journal"
+      # External canonical consumed record is NEVER reset/deleted by this job.
+      # No installer, OIDC, upload, external AI, buyer approval or capture.

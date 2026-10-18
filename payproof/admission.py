@@ -668,3 +668,51 @@ class WorkflowLaunch109:
         return _json(self._admission),_json(self._actual)
 
     def __reduce_ex__(self,protocol):raise TypeError('Workflow launch is process-private')
+
+
+# Explicit prospective Owner-controlled profile111; no native67 seal fabrication.
+_FIXTURE_OWNER111=object()
+_FIXTURE_SYNTHETIC111=object()
+
+@dataclass(frozen=True,repr=False)
+class FixtureLaunch111:
+    _record: bytes=field(repr=False)
+    _actual: bytes=field(repr=False)
+    _seal: object=field(repr=False)
+
+    def __post_init__(self):
+        if self._seal not in (_FIXTURE_OWNER111,_FIXTURE_SYNTHETIC111):
+            raise InvalidData('FIXTURE_PRIVATE_LAUNCH111')
+
+    @property
+    def test_only(self):return self._seal is _FIXTURE_SYNTHETIC111
+
+    def require(self):
+        self.__post_init__()
+        return _json(self._record),_json(self._actual)
+
+    def __reduce_ex__(self,protocol):raise TypeError('Fixture launch is process-private')
+
+@dataclass(repr=False)
+class FixtureSession111:
+    launch: FixtureLaunch111=field(repr=False)
+    client_id: str=field(repr=False)
+    client_secret: str=field(repr=False)
+    _guard: object=field(repr=False)
+    _closed: bool=field(default=False,repr=False)
+
+    @property
+    def test_only(self):return self.launch.test_only
+
+    @property
+    def operations(self):return frozenset({'orders:create','orders:read'})
+
+    def require(self,operation):
+        if self._closed or operation not in self.operations or type(self.launch) is not FixtureLaunch111:
+            raise InvalidData('FIXTURE_SCOPE_OR_CLOSED111')
+        self.launch.require();self._guard()
+
+    def close(self):
+        self.client_id=self.client_secret='';self._closed=True
+
+    def __reduce_ex__(self,protocol):raise TypeError('Fixture session is process-private')
