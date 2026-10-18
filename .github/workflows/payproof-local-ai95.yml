@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   local-ui:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.actor == 'Elinfiny' && github.actor_id == '273768139' && github.run_attempt == 1
+    if: false
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
