@@ -57,3 +57,56 @@ byId('export').addEventListener('click',()=>{
   const a=document.createElement('a');a.href=url;a.download='payproof-synthetic-evidence.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 });
 refresh().catch(error=>byId('message').textContent=error.message);
+
+
+// Recorded Sandbox run118: isolated saved evidence, never current order authority.
+const recordedRun118Ready = (async () => {
+  const element = id => document.getElementById(id);
+  const status = element('recorded-run-status');
+  if (!status) return;
+  const unavailable = () => {
+    status.textContent = 'UNAVAILABLE — unverified';
+    status.dataset.state = 'UNKNOWN';
+    status.dataset.evidence = 'unverified';
+    element('recorded-run-link').hidden = true;
+    element('recorded-run-time').textContent = 'Unavailable';
+    element('recorded-run-time').dateTime = '';
+    for (const id of ['recorded-run-total','recorded-run-model','recorded-run-calls']) element(id).textContent = 'Unavailable';
+    element('recorded-run-context').textContent = 'Recorded evidence is unavailable or its integrity has not been verified. No synthetic result is substituted.';
+    element('recorded-run-proof').textContent = 'Unavailable — unverified';
+  };
+  unavailable();
+  try {
+    // Fixed same-origin inert payload embedded in index.html; no import/refresh/API.
+    const data = element('recorded-run117-data');
+    if (!data || data.textContent.length > 8192 || !crypto.subtle) return;
+    const record = JSON.parse(data.textContent);
+    const canonical = value => JSON.stringify(value && typeof value === 'object'
+      ? (Array.isArray(value) ? value.map(v => JSON.parse(canonical(v)))
+        : Object.fromEntries(Object.keys(value).sort().map(k => [k,JSON.parse(canonical(value[k]))])))
+      : value);
+    const bytes = new TextEncoder().encode(canonical(record));
+    const digest = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), b => b.toString(16).padStart(2,'0')).join('');
+    if (digest !== 'ab12ba5da5f4ca98b2646f177b48568458e87b08031723d07bd44c220b25d1c4') return;
+    if (record.schema !== 'PAYPROOF_RECORDED_SANDBOX_RUN_V1' ||
+        record.run_id !== 39159527253 || record.job_id !== 117769703589 || record.attempt !== 1 ||
+        record.state !== 'CONFLICT' || record.actual_paypal !== true || record.synthetic !== false ||
+        record.calls !== 2 || record.amount !== '1.00' || record.currency !== 'USD' ||
+        record.local_assistance.model_ready !== true || record.local_assistance.priority !== 'unknown' ||
+        record.local_assistance.financial_authority !== false ||
+        record.payment_actions.length !== 0 || record.local_assistance.payment_actions.length !== 0) return;
+    status.textContent = 'CONFLICT · recorded';
+    status.dataset.state = 'CONFLICT';
+    status.dataset.evidence = 'reviewed-recording';
+    element('recorded-run-time').textContent = record.observed_at;
+    element('recorded-run-time').dateTime = record.observed_at;
+    element('recorded-run-total').textContent = record.amount + ' ' + record.currency;
+    element('recorded-run-model').textContent = 'Local model READY · advisory priority unknown (abstained)';
+    element('recorded-run-calls').textContent = '2 · OAuth + existing-order read';
+    element('recorded-run-context').textContent = 'Financial details did not pass validation. The internal cause was not retained in this receipt. READY means the local model initialized; it did not issue a valid recommendation. No payment action is available.';
+    element('recorded-run-proof').textContent = JSON.stringify(record,null,2);
+    element('recorded-run-link').hidden = false;
+  } catch (_) {
+    unavailable();
+  }
+})();
