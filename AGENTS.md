@@ -48,3 +48,25 @@ Direction71 scoped exception: reviewed inactive source integration may be publis
 Direction95 SOURCE_ONLY exception: exact reviewed local-AI CI preparation may add .github/workflows/payproof-local-ai95.yml and devpost/local-ai-ci95.md, reuse unchanged qa/local_ai93.cjs/doc from accepted d282a2f, and append only this paragraph. One workflow_dispatch job with literal if:false remains dormant before runner acquisition. Create-only review/payproof-local-ai-ci95-20261018 and one draft PR only; no merge/main update, false-guard activation, dispatch, runner/install/browser/harness/test execution, paid usage, billing/settings/visibility/permission/secret change or native PayPal operation. Future source review, actual supported dispatch binding, once journal and allowance or explicit bounded financial grant are separate prerequisites. Preserve existing historical grants, consumed/UNKNOWN outcomes and all source/native guards.
 
 Direction119 scoped SOURCE_ONLY preparation: after the accepted recorded-evidence product PR24 merge, only a new focused recorded-panel runner, a dormant manual workflow, its compact execution contract and this paragraph are admitted on review/payproof-recorded-panel-qa119-20261018. Every executable job remains literal if:false. Direction119 authorizes no hosted execution, browser launch, installer/download, model fit, PayPal call, activation, dispatch, spending, credential change, deployment or submission. Existing product/model/financial/CSS and prior workflows remain exact. Future120 requires independent source review, an actual included-minute/cost admission, current native source/caller bindings, external owned consumed-before-dispatch record for PAYPROOF-RECORDED-PANEL120-ONCE, one attempt only, and exact dormant restoration after terminal or containment. Public JSON or ENV consistency is not authority. No old consumed request, QA or fixture run may be replayed.
+
+## CURRENT122 — accepted private product and first media production
+
+Auditor direction122 supersedes the121 runtime hold only for one new private
+PAYPROOF-DEMO122-PRIVATE-ONCE production. Preserve all30 product payloads and
+original121 FAIL/PARTIAL evidence; independent semantic acceptance does not
+rewrite the old check. PR26 exact normal merge is admitted. Only new demo helper,
+manual workflow, media provenance copies and this scope/documentation may change.
+One standard ubuntu-24.04 job <=10min, one new fixture DB/capture, actual current
+0USD hard stop covering compute AND artifact storage, supported artifact download
+route, external owned INTENT/CONSUMED before submit, attempt1 and exact expected
+head/actor/repository/main bindings are mandatory. Default job if:false; activation
+is separately bound to frozen source and external owned authority; restore exact
+false after terminal or contain UNKNOWN without replay/cancel. No model fit,
+PayPal/model API, new payment, secret access, billing change, product change,
+ZIP rebuild, old group replay, public visibility, hosting, YouTube or submission.
+Existing qualified official Playwright/Node/Chromium only; optional distro voice/
+FFmpeg installation is ephemeral, signed official Ubuntu only, planned dependency
+closure <=128MiB/180s, no mirror or general upgrade. Audio gate cannot block first
+useful capture. One private artifact <=32MiB, retention1day, cache0. Preserve
+original streams and partial media; assembly of that same capture is allowed,
+repair-and-recapture is not. A private movie does not prove contest eligibility.
