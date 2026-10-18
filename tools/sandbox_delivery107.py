@@ -592,6 +592,80 @@ def open_fixture111(record,*,journal,launch=None,fake_credentials=None,clock=Non
     guard();session=FixtureSession111(launch,values[0],values[1],guard);values=None
     return session
 
+
+def qualified_creation114(reader):
+    """Copy only the already qualified CREATE projection, never provider raw data."""
+    c=reader._creation
+    if type(c) is not dict or reader._created_id is None:return None
+    record,_=reader.context.launch.require()
+    return {'schema':'PAYPROOF_QUALIFIED_SANDBOX_CREATE114','id':c['id'],
+        'status':c['status'],'amount':c['amount'],'currency':c['currency'],
+        'intent':c['intent'],'payment_source_in_request':False,
+        'application_sha256':c['application_sha256'],'origin':c['origin'],
+        'source_commit':record['source_commit'],'source_tree':record['source_tree'],
+        'source_sha256':c['source_sha256'],'stable_effect_key':c['stable_effect_key'],
+        'fixture_identity':c['fixture_identity'],'synthetic':reader.context.test_only,
+        'sandbox':True,'real_payment_executed':False}
+
+
+def projection_diagnostic114(raw,expected):
+    """Pure diagnostic using the SAME financial projector; no substitute engine.
+
+    Only static codes and field-presence/validator-result indicators survive.
+    Unknown/arbitrary exception messages and raw values never leave this helper.
+    """
+    from payproof.core import project_order
+    messages={
+        'Order identity mismatch':('ORDER_ID_MISMATCH114','identity'),
+        'Exactly one purchase unit is supported':('PURCHASE_UNIT_SHAPE114','purchase_units'),
+        'Order amount/currency conflict':('AMOUNT_CURRENCY_CONFLICT114','amount_currency'),
+        'Amount must have two decimal places':('AMOUNT_FORMAT114','amount_currency'),
+        'Amount outside the supported range':('AMOUNT_RANGE114','amount_currency'),
+        'Only USD and EUR are supported in this slice':('CURRENCY_UNSUPPORTED114','amount_currency'),
+        'Provider freshness timestamp missing':('FRESHNESS_MISSING114','freshness'),
+        'Provider freshness timestamp invalid':('FRESHNESS_INVALID114','freshness'),
+        'Unrecognized order status':('ORDER_STATUS_UNSUPPORTED114','status'),
+        'Unsupported capture collection':('CAPTURE_SHAPE114','captures'),
+        'Duplicate capture identity':('CAPTURE_DUPLICATE114','captures'),
+        'Capture currency/status conflict':('CAPTURE_CONFLICT114','captures'),
+        'Capture total exceeds expected amount':('CAPTURE_TOTAL_CONFLICT114','captures')}
+    obj=raw if type(raw) is dict else {}
+    units=obj.get('purchase_units');unit=units[0] if type(units) is list and len(units)==1 and type(units[0]) is dict else {}
+    payments=unit.get('payments');payments=payments if type(payments) is dict else {}
+    fields={'identity':{'present':'id' in obj,'valid':None},
+        'purchase_units':{'present':'purchase_units' in obj,'valid':None},
+        'amount_currency':{'present':type(unit.get('amount')) is dict,'valid':None},
+        'freshness':{'present':'update_time' in obj,'valid':None},
+        'status':{'present':'status' in obj,'valid':None},
+        'captures':{'present':'captures' in payments,'valid':None}}
+    reason='PROJECTION_VALID114';invalid=None;passed=False
+    try:project_order(raw,expected);passed=True
+    except InvalidData as exc:
+        reason,invalid=messages.get(exc.args[0] if len(exc.args)==1 and type(exc.args[0]) is str else None,
+            ('PROJECTION_REJECTED114',None))
+    except (TypeError,AttributeError,KeyError):reason='PROJECTION_SHAPE_REJECTED114'
+    except Exception:reason='PROJECTION_EVALUATION_UNKNOWN114'
+    for field,flags in fields.items():
+        flags['valid']=True if passed else (False if field==invalid else None)
+    return {'schema':'PAYPROOF_SAFE_PROJECTION_DIAGNOSTIC114','code':reason,
+        'projection_valid':passed,'fields':fields,'financial_state_changed_by_diagnostic':False,
+        'unknown_validity_meaning':'null means not established; no fabricated freshness or fallback timestamp'}
+
+
+def failure_diagnostic114(reader,primary):
+    if reader is not None and reader.first_cause:
+        code=('POST_RETURN_SCOPE_OR_DEADLINE114' if reader.first_stage=='POST_RETURN'
+              else 'TRANSPORT_SCOPE_OR_OUTCOME_UNKNOWN114')
+        return {'schema':'PAYPROOF_SAFE_PROJECTION_DIAGNOSTIC114','code':code,
+            'projection_valid':None,'fields':None,'original_stage':reader.first_stage,
+            'financial_state_changed_by_diagnostic':False}
+    if reader is not None and reader.projection_diagnostic114 is not None:
+        return copy.deepcopy(reader.projection_diagnostic114)
+    return {'schema':'PAYPROOF_SAFE_PROJECTION_DIAGNOSTIC114',
+        'code':'PRE_PROJECTION_FAILURE114' if primary else 'NO_FAILURE114',
+        'projection_valid':None,'fields':None,'financial_state_changed_by_diagnostic':False}
+
+
 class FixtureProducer111:
     """Compose unchanged create_order with a separate explicit Owner context.
 
@@ -608,6 +682,7 @@ class FixtureProducer111:
         self._private_returns=[];self._created_id=None;self._create_used=False;self._get_used=False
         self.capture_count=0;self.last_capture_kind=None;self.late_original_preserved=False
         self._creation=None
+        self.projection_diagnostic114=None
 
     def _stop(self,code,stage):
         if self.first_cause is None:self.first_cause,self.first_stage=code,stage
@@ -672,18 +747,23 @@ class FixtureProducer111:
 
     def get_order(self,order_id):
         if self._get_used or order_id!=self._created_id:raise InvalidData('FIXTURE_GET_CONSUMED_OR_ID111')
-        self._get_used=True;return SandboxPayPal.get_order(self,order_id)
+        self._get_used=True
+        raw=SandboxPayPal.get_order(self,order_id)
+        self.projection_diagnostic114=projection_diagnostic114(raw,{'id':order_id,'amount':'1.00','currency':'USD'})
+        return raw
 
     def close(self):
         self.client_id=self.client_secret='';self._raw_transport=None;self._private_returns.clear();self.context.close()
 
 def run_fixture111(record,*,store,journal,launch=None,fake_credentials=None,fake_transport=None,clock=None,monotonic=None):
-    session=reader=None;primary=None;cleanup=[];receipt=None;stage='FIXTURE_PREFLIGHT111';originals=None
+    session=reader=None;primary=None;cleanup=[];receipt=None;stage='FIXTURE_PREFLIGHT111';originals=None;creation114=None;diagnostic114=None
     try:
         if type(store) is not Store:raise InvalidData('FIXTURE_STORE111')
         session=open_fixture111(record,journal=journal,launch=launch,fake_credentials=fake_credentials,clock=clock,monotonic=monotonic)
         reader=FixtureProducer111(session,fake_transport=fake_transport);stage='FIXTURE_CREATE111'
-        created=reader.create(store);stage='FIXTURE_GET111'
+        created=reader.create(store)
+        creation114=qualified_creation114(reader)
+        stage='FIXTURE_GET111'
         order=store.reconcile(created['id'],reader.get_order,reader.mode)
         if order['state'] in ('UNKNOWN','CONFLICT'):raise UnknownResult('FIXTURE_GET_UNQUALIFIED111')
         lineage=dict(reader._creation,read_id=order['id'],read_amount=order['amount'],read_currency=order['currency'],read_state=order['state'])
@@ -696,6 +776,7 @@ def run_fixture111(record,*,store,journal,launch=None,fake_credentials=None,fake
         primary={'code':reader.first_cause if reader and reader.first_cause else ('FIXTURE_REFUSED111' if isinstance(exc,InvalidData) else 'FIXTURE_UNKNOWN111'),
             'stage':reader.first_stage if reader and reader.first_stage else stage}
     finally:
+        diagnostic114=failure_diagnostic114(reader,primary)
         if reader:
             originals={'captured_parsed_returns':reader.capture_count,'last_kind':reader.last_capture_kind,'late_original_preserved_before_refusal':reader.late_original_preserved}
             try:reader.close()
@@ -704,7 +785,8 @@ def run_fixture111(record,*,store,journal,launch=None,fake_credentials=None,fake
             try:session.close()
             except Exception:cleanup.append('FIXTURE_SESSION_CLOSE111')
     return {'primary':primary,'cleanup':cleanup,'receipt':receipt,'original_capture':originals,
-        'calls':reader.calls if reader else 0,'lifecycle':{'session_closed':session._closed if session else None,
+        'calls':reader.calls if reader else 0,'qualified_creation114':creation114,'diagnostic114':diagnostic114,
+        'lifecycle':{'session_closed':session._closed if session else None,
         'private_returns_released':not reader._private_returns if reader else None,
         'credentials_dropped':reader.client_id==reader.client_secret=='' if reader else None}}
 
