@@ -1,5 +1,6 @@
 """Explicit private operator Sandbox read. Unconfigured import performs no work."""
 import argparse
+import copy
 from datetime import datetime, timezone
 import getpass
 import hashlib
@@ -9,8 +10,10 @@ from pathlib import Path
 import sqlite3
 import subprocess
 import sys
+import time
 from payproof.admission import (OperatorConfiguration107, OperatorProfile107,
-    OperatorSession107, _open_operator_session107, _json)
+    OperatorSession107, _open_operator_session107, _json, OwnedDispatch108,
+    load_owned_dispatch108)
 from payproof.core import InvalidData, UnknownResult, Store, canonical, explain
 from payproof.paypal import SandboxPayPal, BASE
 from payproof.service import annotated_order
@@ -29,7 +32,7 @@ class OnceJournal107:
     """Operator-owned durable local journal, not a hosted attestation/lease."""
     def __init__(self, path):
         self.path = str(path)
-    def reserve(self, key):
+    def reserve(self, key, metadata):
         target = Path(self.path)
         if target.parent.stat().st_mode & 0o022:
             raise InvalidData('OPERATOR_PRIVATE_JOURNAL_DIRECTORY107')
@@ -43,8 +46,14 @@ class OnceJournal107:
         finally:os.close(fd)
         with sqlite3.connect(self.path, timeout=2) as db:
             db.execute('CREATE TABLE IF NOT EXISTS operator_once107 (effect_key TEXT PRIMARY KEY, state TEXT NOT NULL)')
+            db.execute('CREATE TABLE IF NOT EXISTS operator_metadata108 (effect_key TEXT PRIMARY KEY, metadata TEXT NOT NULL)')
+            db.execute('BEGIN IMMEDIATE')
+            legacy=db.execute('SELECT 1 FROM operator_once107 o LEFT JOIN operator_metadata108 m ON o.effect_key=m.effect_key WHERE m.effect_key IS NULL LIMIT 1').fetchone()
+            if legacy:
+                raise InvalidData('OPERATOR_LEGACY_JOURNAL_REVIEW_REQUIRED108')
             try:
                 db.execute('INSERT INTO operator_once107 VALUES (?,?)', (key,'ATTEMPTING_NO_RETRY'))
+                db.execute('INSERT INTO operator_metadata108 VALUES (?,?)',(key,canonical(metadata)))
             except sqlite3.IntegrityError:
                 raise InvalidData('OPERATOR_ONCE_CONSUMED107') from None
 
@@ -92,10 +101,12 @@ class OperatorOrderReader107:
         self._phase = 0
         self.calls = 0
         self.first_cause = None
+        self.first_stage = None
+        self._private_returns = []
         self._used = False
 
-    def _stop(self, cause):
-        if self.first_cause is None:self.first_cause = cause
+    def _stop(self, cause, stage='READ'):
+        if self.first_cause is None:self.first_cause,self.first_stage = cause,stage
         raise UnknownResult(self.first_cause)
 
     def transport(self, method, path, headers, body):
@@ -104,15 +115,22 @@ class OperatorOrderReader107:
         if self._phase >= 2 or (method,path) != expected:
             raise InvalidData('OPERATOR_FIXED_ROUTE107')
         try:self.context.require('orders:read')
-        except InvalidData:self._stop('WINDOW_OR_SOURCE_UNAVAILABLE107')
+        except InvalidData as exc:self._stop(sanitized_code108(exc),'PRE_CALL')
         self._phase += 1  # Consume BEFORE call; exception/late result never rearms.
         self.calls += 1
         try:
             value = self._raw_transport(method,path,headers,body) if self._raw_transport else SandboxPayPal._network(self,method,path,headers,body)
         except Exception:
-            self._stop('PROVIDER_OUTCOME_UNKNOWN107')
+            self._stop('PROVIDER_OUTCOME_UNKNOWN107','OAUTH' if self._phase==1 else 'ORDER')
+        # Original parsed provider return remains RAM-private before late guards.
+        # OAuth originals/token bytes/hashes are NEVER exported or persisted.
+        self._private_returns.append(('OAUTH_RETURN' if self._phase==1 else 'ORDER_RETURN',copy.deepcopy(value)))
+        try:
+            if len(json.dumps(value,allow_nan=False).encode())>1024*1024:
+                self._stop('PROVIDER_RESULT_BOUNDS108','RETURN_CAPTURE')
+        except (ValueError,TypeError):self._stop('PROVIDER_RESULT_BOUNDS108','RETURN_CAPTURE')
         try:self.context.require('orders:read')
-        except InvalidData:self._stop('LATE_OR_SOURCE_CHANGED107')
+        except InvalidData as exc:self._stop(sanitized_code108(exc),'POST_RETURN')
         return value
 
     def _token(self):
@@ -130,11 +148,13 @@ class OperatorOrderReader107:
         self._used = True
         try:return SandboxPayPal.get_order(self,order_id)
         except UnknownResult:self._stop(self.first_cause or 'PROVIDER_OUTCOME_UNKNOWN107')
-        except Exception:self._stop(self.first_cause or 'INVALID_PROVIDER_RESULT107')
+        except InvalidData as exc:self._stop(self.first_cause or sanitized_code108(exc),'VALIDATION')
+        except Exception:self._stop(self.first_cause or 'INVALID_PROVIDER_RESULT107','RESULT')
 
     def close(self):
         self.client_id = self.client_secret = ''
         self._raw_transport = None
+        self._private_returns.clear()
         self.context.close()
 
 def reconcile_operator107(store, reader, *, assistance=None):
@@ -152,10 +172,12 @@ def reconcile_operator107(store, reader, *, assistance=None):
         'state':view['state'],'amount':view['amount'],'currency':view['currency'],
         'explanation':explain(order),'local_assistance':view['local_assistance'],
         'calls':reader.calls,'first_cause':reader.first_cause,'payment_actions':[],
+        'first_stage':reader.first_stage,
         'actual_paypal':not reader.context.test_only,'contest_ready':False}
 
 def run_operator107(configuration=None, *, store=None, journal=None, assistance=None):
     session = None;reader = None;primary = None;cleanup = [];receipt = None
+    stage='CONFIGURATION'
     try:
         if type(configuration) is not OperatorConfiguration107 or type(store) is not Store:
             raise InvalidData('OPERATOR_UNCONFIGURED107')
@@ -163,11 +185,12 @@ def run_operator107(configuration=None, *, store=None, journal=None, assistance=
         order = store.order(configuration.order_id)
         if (order['amount'],order['currency']) != (configuration.amount,configuration.currency):
             raise InvalidData('OPERATOR_EXPECTATION_MISMATCH107')
-        session = open_operator107(configuration,journal=journal)
+        stage='PRIVATE_TERMINAL';session = open_operator107(configuration,journal=journal)
         reader = OperatorOrderReader107(session)
-        receipt = reconcile_operator107(store,reader,assistance=assistance)
-    except Exception:
-        primary = 'OPERATOR_RUN_REFUSED_OR_UNKNOWN107'
+        stage='RECONCILIATION';receipt = reconcile_operator107(store,reader,assistance=assistance)
+        if reader.first_cause:primary={'code':reader.first_cause,'stage':reader.first_stage}
+    except Exception as exc:
+        primary = sanitized_failure108(exc,stage,reader)
     finally:
         if reader:
             try:reader.close()
@@ -188,20 +211,154 @@ def configuration107(raw):
     except (ValueError,TypeError,KeyError,AttributeError):
         raise InvalidData('OPERATOR_CONFIGURATION_DATA107') from None
 
+# Only fixed, reviewed codes leave the process; never arbitrary exception text.
+_PUBLIC_CODES108=frozenset({
+    'OPERATOR_UNCONFIGURED107','OPERATOR_PROFILE_MIX107','OPERATOR_SOURCE_MISMATCH107',
+    'OPERATOR_WINDOW_OR_ALLOWANCE107','OPERATOR_MONOTONIC_EXPIRED108',
+    'OPERATOR_APPLICATION_MISMATCH107','OPERATOR_CREDENTIAL_INPUT107',
+    'OPERATOR_ONCE_CONSUMED107','OPERATOR_EXPECTATION_MISMATCH107',
+    'OPERATOR_ACTUAL_SOURCE_REF107','OPERATOR_PRIVATE_TERMINAL_REQUIRED107',
+    'OPERATOR_LEGACY_JOURNAL_REVIEW_REQUIRED108','OPERATOR_TYPED_CONFIGURATION107',
+    'OPERATOR_READ_ONLY_OR_CLOSED107','OPERATOR_REGISTERED_DATABASE_REQUIRED107',
+    'MISSING_OWN_CAS_FIRST_RUN_JOB_ADAPTER108','EXTERNAL_DISPATCH_PROVIDER_BINDING_REQUIRED108',
+    'EXTERNAL_DISPATCH_PROFILE_MIX108','EXTERNAL_DISPATCH_RECORD108','EXTERNAL_DISPATCH_CHAIN108',
+    'EXTERNAL_DISPATCH_RUN_JOB108','EXTERNAL_DISPATCH_ACTUAL_FIRST_RUN108','EXTERNAL_DISPATCH_CALLER108',
+    'EXTERNAL_DISPATCH_ADMISSION108','GITHUB_CALLER_BINDING_MISMATCH108',
+    'GITHUB_SOURCE_BINDING_MISMATCH108','GITHUB_STABLE_EFFECT_BINDING108',
+    'GITHUB_LINEAGE_BINDING108','PUBLIC_CALLER_CLAIM_REFUSED108',
+    'GITHUB_PROTECTED_CREDENTIAL_INPUT108','GITHUB_EXPECTED_WORKFLOW_MISSING108',
+    'PROVIDER_OUTCOME_UNKNOWN107','INVALID_PROVIDER_RESULT107','READ_ALREADY_CONSUMED107',
+    'PROVIDER_RESULT_BOUNDS108','VALIDATION_REFUSED108'})
+
+def sanitized_code108(exc):
+    code=exc.args[0] if type(exc) in (InvalidData,UnknownResult) and len(exc.args)==1 else None
+    return code if type(code) is str and code in _PUBLIC_CODES108 else 'VALIDATION_REFUSED108'
+
+def sanitized_failure108(exc,stage,reader=None):
+    return {'code':reader.first_cause if reader and reader.first_cause else sanitized_code108(exc),
+            'stage':reader.first_stage if reader and reader.first_stage else stage}
+
+def _actual_github108(record):
+    # Ordinary GitHub context is configuration, not an attestation; the separate
+    # provider-bound OwnedDispatch108 is mandatory even when these values match.
+    names={'repository_id':'GITHUB_REPOSITORY_ID','owner_id':'GITHUB_REPOSITORY_OWNER_ID',
+        'actor_id':'GITHUB_ACTOR_ID','attempt':'GITHUB_RUN_ATTEMPT','ref':'GITHUB_REF',
+        'event':'GITHUB_EVENT_NAME','run_id':'GITHUB_RUN_ID','job_name':'GITHUB_JOB'}
+    actual={k:os.environ.get(v) for k,v in names.items()}
+    actual['job_id']=record['job_id']  # Actual numeric job was independently bound by the producer.
+    def git(arg):return subprocess.run(['git','-C',str(ROOT107),'rev-parse',arg],capture_output=True,text=True,timeout=3,check=True).stdout.strip()
+    actual.update(source_commit=git('HEAD'),source_tree=git('HEAD^{tree}'),source_sha256=source_digest107())
+    actual['workflow_path']='.github/workflows/payproof-sandbox-delivery108.yml'
+    workflow=ROOT107/actual['workflow_path']
+    if not workflow.is_file():raise InvalidData('GITHUB_EXPECTED_WORKFLOW_MISSING108')
+    actual['workflow_sha256']=hashlib.sha256(workflow.read_bytes()).hexdigest()
+    return actual
+
+def preflight_github108(configuration=None, *, admission=None, synthetic_actual=None):
+    if type(configuration) is not OperatorConfiguration107:
+        raise InvalidData('OPERATOR_UNCONFIGURED107')
+    if configuration.profile not in (OperatorProfile107.GITHUB_OWNER_MANAGED_SANDBOX,OperatorProfile107.SYNTHETIC_FIXTURE):
+        raise InvalidData('OPERATOR_PROFILE_MIX107')
+    if admission is None:admission=load_owned_dispatch108() # Missing adapter refuses BEFORE ENV.
+    if type(admission) is not OwnedDispatch108:
+        raise InvalidData('EXTERNAL_DISPATCH_PROVIDER_BINDING_REQUIRED108')
+    synthetic=configuration.profile is OperatorProfile107.SYNTHETIC_FIXTURE
+    record=admission.require(synthetic=synthetic)
+    if not synthetic and synthetic_actual is not None:
+        raise InvalidData('PUBLIC_CALLER_CLAIM_REFUSED108')
+    actual=synthetic_actual if synthetic else _actual_github108(record)
+    if type(actual) is not dict:raise InvalidData('GITHUB_CALLER_BINDING_MISMATCH108')
+    for key in ('repository_id','owner_id','actor_id','attempt','ref','event','run_id','job_id','job_name','workflow_path'):
+        if type(actual.get(key)) is not str or actual[key]!=record[key]:raise InvalidData('GITHUB_CALLER_BINDING_MISMATCH108')
+    for key in ('source_commit','source_tree','source_sha256','workflow_sha256'):
+        if actual.get(key)!=record[key]:raise InvalidData('GITHUB_SOURCE_BINDING_MISMATCH108')
+    if any(getattr(configuration,k)!=record[k] for k in ('source_commit','source_tree','source_sha256')):
+        raise InvalidData('GITHUB_SOURCE_BINDING_MISMATCH108')
+    key=hashlib.sha256(canonical(['PayProof','sandbox','orders:read',configuration.client_id_sha256,configuration.order_id]).encode()).hexdigest()
+    if key!=record['stable_effect_key']:raise InvalidData('GITHUB_STABLE_EFFECT_BINDING108')
+    if configuration.order_lineage_sha256!=record['registered_lineage_sha256']:raise InvalidData('GITHUB_LINEAGE_BINDING108')
+    attached={'client_id_sha256':configuration.client_id_sha256,
+        'order_id_sha256':hashlib.sha256(configuration.order_id.encode()).hexdigest(),
+        'expected_amount':configuration.amount,'expected_currency':configuration.currency,
+        'operator_allocation':configuration.operator_allocation,'credential_provenance':configuration.credential_provenance}
+    if any(record[k]!=v for k,v in attached.items()):raise InvalidData('GITHUB_LINEAGE_BINDING108')
+    return admission
+
+def open_github_operator108(configuration=None, *, journal=None, admission=None,
+        synthetic_actual=None, fake_credential_reader=None, clock=None, monotonic=None):
+    admission=preflight_github108(configuration,admission=admission,synthetic_actual=synthetic_actual)
+    synthetic=admission.test_only
+    if type(journal) is not OnceJournal107:raise InvalidData('OPERATOR_UNCONFIGURED107')
+    if not synthetic and (fake_credential_reader is not None or clock is not None or monotonic is not None):
+        raise InvalidData('GITHUB_PROTECTED_CREDENTIAL_INPUT108')
+    def protected_pair():
+        # Exactly two credential reads, only after complete preflight and local
+        # durable reserve in _open. No job-wide secret mapping or token output.
+        return (os.environ.get('PAYPROOF_PAYPAL_SANDBOX_CLIENT_ID'),
+                os.environ.get('PAYPROOF_PAYPAL_SANDBOX_CLIENT_SECRET'))
+    if synthetic and fake_credential_reader is None:raise InvalidData('GITHUB_PROTECTED_CREDENTIAL_INPUT108')
+    return _open_operator_session107(configuration,actual_source=source_digest107,
+        credential_reader=fake_credential_reader if synthetic else protected_pair,
+        reserve_once=journal.reserve,clock=clock or (lambda:datetime.now(timezone.utc)),
+        profile=configuration.profile,monotonic=monotonic or time.monotonic)
+
+def run_github_operator108(configuration=None, *, store=None, journal=None, admission=None,
+        synthetic_actual=None, fake_credential_reader=None, fake_transport=None,
+        clock=None,monotonic=None,assistance=None):
+    session=None;reader=None;primary=None;cleanup=[];receipt=None;stage='CONFIGURATION'
+    try:
+        if type(configuration) is not OperatorConfiguration107 or type(store) is not Store:
+            raise InvalidData('OPERATOR_UNCONFIGURED107')
+        row=store.order(configuration.order_id)
+        if (row['amount'],row['currency'])!=(configuration.amount,configuration.currency):
+            raise InvalidData('OPERATOR_EXPECTATION_MISMATCH107')
+        stage='EXTERNAL_ONCE_SOURCE_CALLER_PREFLIGHT'
+        session=open_github_operator108(configuration,journal=journal,admission=admission,
+            synthetic_actual=synthetic_actual,fake_credential_reader=fake_credential_reader,clock=clock,monotonic=monotonic)
+        stage='READER';reader=OperatorOrderReader107(session,fake_transport=fake_transport)
+        stage='RECONCILIATION';receipt=reconcile_operator107(store,reader,assistance=assistance)
+        if reader.first_cause:primary={'code':reader.first_cause,'stage':reader.first_stage}
+    except Exception as exc:primary=sanitized_failure108(exc,stage,reader)
+    finally:
+        if reader:
+            try:reader.close()
+            except Exception:cleanup.append('READER_CLOSE108')
+        elif session:
+            try:session.close()
+            except Exception:cleanup.append('SESSION_CLOSE108')
+    return {'primary':primary,'cleanup':cleanup,'receipt':receipt,
+        'lifecycle':{'session_closed':session._closed if session else None,
+            'private_returns_released':not reader._private_returns if reader else None,
+            'reader_credentials_dropped':reader.client_id==reader.client_secret=='' if reader else None}}
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='command')
     sub.add_parser('fingerprint')
-    sub.add_parser('hosted-preflight')
+    hosted=sub.add_parser('hosted-preflight');hosted.add_argument('--config',required=True)
+    cloud=sub.add_parser('github-owner-managed');cloud.add_argument('--config',required=True)
+    cloud.add_argument('--database',required=True);cloud.add_argument('--journal',required=True)
+    cloud.add_argument('--local-ai',action='store_true')
     run = sub.add_parser('operator-managed')
     run.add_argument('--config',required=True);run.add_argument('--database',required=True)
     run.add_argument('--journal',required=True);run.add_argument('--local-ai',action='store_true')
     args = parser.parse_args()
     if args.command=='fingerprint':print(source_digest107());return 0
-    if args.command=='hosted-preflight':
-        print(json.dumps({'primary':'MISSING_REVIEWED_EXTERNAL_ONCE_AND_CUSTODY_ADMISSION107','cleanup':[]}));return 2
+    if args.command in ('hosted-preflight','github-owner-managed'):
+        try:
+            with open(args.config,'rb') as stream:raw=stream.read(16385)
+            if len(raw)>16384:raise InvalidData('OPERATOR_CONFIG_BOUNDS107')
+            cfg=configuration107(_json(raw))
+            if args.command=='hosted-preflight':
+                preflight_github108(cfg);result={'primary':None,'cleanup':[],'stage':'PREFLIGHT'}
+            else:
+                if not Path(args.database).is_file():raise InvalidData('OPERATOR_REGISTERED_DATABASE_REQUIRED107')
+                result=run_github_operator108(cfg,store=Store(args.database),journal=OnceJournal107(args.journal),
+                    assistance=enable_local_assistance() if args.local_ai else None)
+        except Exception as exc:result={'primary':sanitized_failure108(exc,'CLOUD_ENTRY'),'cleanup':[],'receipt':None}
+        print(json.dumps(result,sort_keys=True));return 0 if result['primary'] is None else 2
     if args.command!='operator-managed':
-        print(json.dumps({'primary':'OPERATOR_UNCONFIGURED107','cleanup':[]}));return 2
+        print(json.dumps({'primary':{'code':'OPERATOR_UNCONFIGURED107','stage':'CONFIGURATION'},'cleanup':[]}));return 2
     try:
         with open(args.config,'rb') as stream:raw=stream.read(16385)
         if len(raw)>16384:raise InvalidData('OPERATOR_CONFIG_BOUNDS107')
@@ -210,7 +367,7 @@ def main():
         if not Path(args.database).is_file():raise InvalidData('OPERATOR_REGISTERED_DATABASE_REQUIRED107')
         result=run_operator107(cfg,store=Store(args.database),journal=OnceJournal107(args.journal),
             assistance=enable_local_assistance() if args.local_ai else None)
-    except Exception:result={'primary':'OPERATOR_CONFIGURATION_REFUSED107','cleanup':[],'receipt':None}
+    except Exception as exc:result={'primary':sanitized_failure108(exc,'CONFIGURATION'),'cleanup':[],'receipt':None}
     print(json.dumps(result,sort_keys=True));return 0 if result['primary'] is None else 2
 
 if __name__=='__main__':raise SystemExit(main())
