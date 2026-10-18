@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   local-ui:
-    if: false
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.actor == 'Elinfiny' && github.actor_id == '273768139' && github.run_attempt == 1
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -42,8 +42,8 @@ jobs:
           assert e['GITHUB_EVENT_NAME']=='workflow_dispatch'
           assert e['GITHUB_RUN_ATTEMPT']=='1' and e['GITHUB_REF']=='refs/heads/main'
           assert re.fullmatch('[a-f0-9]{40}',e['INPUT_HEAD']) and e['GITHUB_SHA']==e['INPUT_HEAD']
-          assert e['INPUT_ADMISSION']=='INACTIVE_ADMISSION_REF_103'
-          assert e['INPUT_INVOCATION']=='INACTIVE_NEW_ONCE_103'
+          assert e['INPUT_ADMISSION']=='libfile_505e4189bc588191bcda811c4a35da79@746'
+          assert e['INPUT_INVOCATION']=='PAYPROOF-RESPONSIVE104-20261018-ONCE'
           assert e['INPUT_INVOCATION']!='PAYPROOF-LOCAL-AI-UI95-20261018-ONCE'
           assert re.fullmatch(r'[A-Za-z0-9_:@./+-]{1,200}',e['INPUT_ADMISSION'])
           # Public strings are bindings only; external review/once journal and
