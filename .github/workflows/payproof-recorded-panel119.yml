@@ -1,0 +1,201 @@
+name: PayProof recorded panel QA dormant119
+on:
+  workflow_dispatch:
+    inputs:
+      expected_head:
+        description: Exact independently reviewed future source commit
+        required: true
+        type: string
+      admission_ref:
+        description: Actual independent execution and financial admission reference
+        required: true
+        type: string
+      invocation_id:
+        description: Fixed once-only journal key; data is not authority
+        required: true
+        type: string
+permissions: {}
+concurrency:
+  group: payproof-recorded-panel120-once
+  cancel-in-progress: false
+jobs:
+  local-ui:
+    if: false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      INPUT_HEAD: ${{ inputs.expected_head }}
+      INPUT_ADMISSION: ${{ inputs.admission_ref }}
+      INPUT_INVOCATION: ${{ inputs.invocation_id }}
+    steps:
+      - name: Validate future admitted invocation metadata
+        shell: bash
+        run: |
+          python3 -I -B - <<'PY'
+          import os,re
+          e=os.environ
+          assert e['GITHUB_REPOSITORY']=='Elinfiny/PayProof'
+          assert e['GITHUB_REPOSITORY_ID']=='1419908202'
+          assert e['GITHUB_ACTOR']=='Elinfiny' and e['GITHUB_ACTOR_ID']=='273768139'
+          assert e['GITHUB_EVENT_NAME']=='workflow_dispatch'
+          assert e['GITHUB_RUN_ATTEMPT']=='1' and e['GITHUB_REF']=='refs/heads/main'
+          assert re.fullmatch('[a-f0-9]{40}',e['INPUT_HEAD']) and e['GITHUB_SHA']==e['INPUT_HEAD']
+          assert e['INPUT_ADMISSION']=='INACTIVE_ADMISSION_REF_119'
+          assert e['INPUT_INVOCATION']=='PAYPROOF-RECORDED-PANEL120-ONCE'
+          assert e['INPUT_INVOCATION']!='PAYPROOF-RESPONSIVE104-20261018-ONCE'
+          assert re.fullmatch(r'[A-Za-z0-9_:@./+-]{1,200}',e['INPUT_ADMISSION'])
+          # Public strings are bindings only; external review/once journal and
+          # any financial grant must precede a separately reviewed activation.
+          print('FUTURE_INVOCATION_BINDINGS_MATCH')
+          PY
+      - name: Checkout exact future reviewed head
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+        with:
+          ref: ${{ inputs.expected_head }}
+          persist-credentials: false
+          fetch-depth: 2
+          submodules: false
+          lfs: false
+      - name: Exact qualified Node without caching
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
+        with:
+          node-version: '22.23.3'
+          architecture: x64
+          check-latest: false
+          package-manager-cache: false
+      - name: Future bounded setup and single new UI harness
+        shell: bash
+        run: |
+          python3 -I -B - <<'PY'
+          import os,sys,json,pathlib,hashlib,subprocess,time,datetime,tempfile,selectors,signal,stat,resource,re
+          root=pathlib.Path.cwd();started=time.monotonic();records=[];stage=None;outcome='FAIL';first_error=None
+          def stamp():return {'utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'monotonic_ns':time.monotonic_ns()}
+          def digest(b):return hashlib.sha256(b).hexdigest()
+          def blob(b):return hashlib.sha1(b'blob '+str(len(b)).encode()+b'\0'+b).hexdigest()
+          def emit(value):print(json.dumps(value,sort_keys=True),flush=True)
+          def projection():
+              raw=subprocess.check_output(['git','ls-tree','-rz','HEAD'],timeout=10);rows=[];seen=set()
+              exclusions={'.github/workflows/payproof-recorded-panel119.yml','qa/recorded_panel119.md'}
+              for line in raw.split(b'\0'):
+                  if not line:continue
+                  meta,name=line.split(b'\t',1);mode,kind,gitsha=meta.decode().split();name=name.decode();p=root/name
+                  assert kind=='blob' and mode in ('100644','100755') and not p.is_symlink()
+                  data=p.read_bytes();assert blob(data)==gitsha
+                  assert bool(p.stat().st_mode&stat.S_IXUSR)==(mode=='100755')
+                  if name in exclusions:seen.add(name);continue
+                  rows.append({'path':name,'mode':mode,'sha':gitsha})
+              assert seen==exclusions and len(rows)==101;rows.sort(key=lambda r:r['path'])
+              assert digest(json.dumps(rows,sort_keys=True,separators=(',',':')).encode())=='6007bf98dc9248da4d58687943bad9f2205c8397e0e3a38f6345e5a97b8d6a42'
+              assert digest((root/'qa/recorded_panel119.cjs').read_bytes())=='dfca557e6b6f1cdf8305fdcab51579b49b9a37554f27f5c35d5138ec42e0967a'
+              assert digest((root/'payproof/web/style.css').read_bytes())=='42d457e036fd5779786f53312bfc2805d64e3c6d2417ab85006dfdb10df68035'
+              actual_workflow=digest((root/'.github/workflows/payproof-recorded-panel119.yml').read_bytes())
+              # Whole-workflow SHA/head/orderedparents are separately pinned by
+              # independent admission BEFORE dispatch, never self-embedded or callerJSON.
+              assert re.fullmatch('[a-f0-9]{64}',actual_workflow)
+              parents=subprocess.check_output(['git','show','-s','--format=%P','HEAD'],text=True,timeout=5).strip().split()
+              assert 1<=len(parents)<=2 and all(re.fullmatch('[a-f0-9]{40}',p) for p in parents)
+              emit({'source_projection_sha256':'6007bf98dc9248da4d58687943bad9f2205c8397e0e3a38f6345e5a97b8d6a42','source_rows':101,'excluded':sorted(exclusions),'actual_workflow_sha256':actual_workflow,'actual_head':os.environ['INPUT_HEAD'],'ordered_parents':parents})
+              return 'RECORDED_SOURCE101_MATCH'
+          def disk_bytes():
+              return sum(p.stat().st_size for p in stage.rglob('*') if p.is_file() and not p.is_symlink())
+          def run(name,args,seconds,cwd,env):
+              assert seconds>5,'No child launch without execution/reap reserve'
+              pre=stamp();s=time.monotonic();deadline=s+seconds;work=deadline-5
+              streams={'stdout':bytearray(),'stderr':bytearray()};counts={'stdout':0,'stderr':0};hashes={k:hashlib.sha256() for k in streams}
+              sel=selectors.DefaultSelector();proc=None;reason=None;eof=set();cleanup_errors=[];code=None
+              def limits():resource.setrlimit(resource.RLIMIT_FSIZE,(512*1024*1024,512*1024*1024))
+              def kill():
+                  try:os.killpg(proc.pid,signal.SIGKILL)
+                  except ProcessLookupError:pass
+                  except BaseException as e:cleanup_errors.append(str(e))
+              try:
+                  proc=subprocess.Popen(args,cwd=cwd,env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,start_new_session=True,preexec_fn=limits)
+                  for key,pipe in [('stdout',proc.stdout),('stderr',proc.stderr)]:sel.register(pipe,selectors.EVENT_READ,key)
+                  while sel.get_map() or proc.poll() is None:
+                      now=time.monotonic()
+                      if not reason and (now>=work or disk_bytes()>1024**3):reason='TIMEOUT_OR_MONITORED_STAGE_LIMIT';kill()
+                      if now>=deadline:
+                          if reason is None:reason='ABSOLUTE_CHILD_DEADLINE'
+                          kill();break
+                      for key,_ in sel.select(min(.1,max(0,deadline-now))):
+                          chunk=os.read(key.fileobj.fileno(),8192)
+                          if chunk:
+                              k=key.data;counts[k]+=len(chunk);hashes[k].update(chunk);remaining=131072-len(streams[k]);streams[k].extend(chunk[:max(0,remaining)])
+                              if counts[k]>131072 and reason is None:reason='STREAM_LIMIT_ORIGINAL_PREFIX_RETAINED';kill()
+                          else:eof.add(key.data);sel.unregister(key.fileobj);key.fileobj.close()
+                  try:code=proc.wait(timeout=max(.001,deadline-time.monotonic()))
+                  except subprocess.TimeoutExpired:cleanup_errors.append('REAP_UNKNOWN');kill()
+              except BaseException as error:
+                  if reason is None:reason=type(error).__name__+':'+str(error)
+                  if proc is not None:kill()
+                  if proc is not None:
+                      try:code=proc.wait(timeout=max(.001,deadline-time.monotonic()))
+                      except subprocess.TimeoutExpired:cleanup_errors.append('REAP_UNKNOWN')
+              finally:
+                  for key in list(sel.get_map().values()):key.fileobj.close()
+                  sel.close()
+              rec={'phase':name,'pre':pre,'post':stamp(),'seconds':time.monotonic()-s,'exit':code,'failure':reason,'cleanup_errors':cleanup_errors,'EOF_both':eof=={'stdout','stderr'},'reaped':proc is not None and proc.poll() is not None}
+              for key,data in streams.items():
+                  rec[key+'_bytes']=counts[key];rec[key+'_sha256']=hashes[key].hexdigest();rec[key+'_retained_bytes']=len(data);rec[key+'_retained_sha256']=digest(data);(stage/(name+'.'+key+'.raw')).write_bytes(data)
+              (stage/(name+'.terminal.json')).write_text(json.dumps(rec));records.append(rec)
+              emit({'terminal':rec,'stdout':streams['stdout'].decode('utf8','replace'),'stderr':streams['stderr'].decode('utf8','replace')})
+              assert code==0 and reason is None and rec['EOF_both'] and rec['reaped'] and not cleanup_errors,name
+              return bytes(streams['stdout'])
+          try:
+              assert subprocess.check_output(['git','rev-parse','HEAD'],text=True,timeout=10).strip()==os.environ['INPUT_HEAD']
+              assert os.uname().machine=='x86_64' and 'VERSION_ID="24.04"' in pathlib.Path('/etc/os-release').read_text()
+              assert subprocess.check_output(['node','--version'],text=True,timeout=5).strip()=='v22.23.3'
+              assert projection()=='RECORDED_SOURCE101_MATCH'
+              lock=root/'qa/package-lock.json';assert digest(lock.read_bytes())=='4c5980b6227cd6d180285ea681b30c271cece60651ce9d7c73f8d3273073832d'
+              stage=pathlib.Path(tempfile.mkdtemp(prefix='payproof-recorded119-',dir=os.environ['RUNNER_TEMP']));stage.chmod(0o700)
+              assert os.statvfs(stage).f_bavail*os.statvfs(stage).f_frsize>2*1024**3
+              (stage/'tmp').mkdir(mode=0o700);(stage/'user.npmrc').write_text('');(stage/'global.npmrc').write_text('')
+              env={'PATH':os.environ['PATH'],'CI':'true','LANG':'C.UTF-8','TMPDIR':str(stage/'tmp'),'npm_config_cache':str(stage/'npm-cache'),'NPM_CONFIG_USERCONFIG':str(stage/'user.npmrc'),'NPM_CONFIG_GLOBALCONFIG':str(stage/'global.npmrc'),'PLAYWRIGHT_BROWSERS_PATH':str(stage/'browsers'),'PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT':'30000'}
+              run('npm-ci',['npm','ci','--ignore-scripts','--no-audit','--no-fund','--fetch-retries=0','--registry=https://registry.npmjs.org'],120,root/'qa',env)
+              packages={}
+              for name in ['playwright','playwright-core']:
+                  file=root/'qa/node_modules'/name/'package.json';value=json.loads(file.read_bytes());assert value['version']=='1.64.1';packages[name]={'sha256':digest(file.read_bytes()),'version':value['version']}
+              installed=json.loads((root/'qa/node_modules/.package-lock.json').read_bytes());locked=json.loads(lock.read_bytes())
+              for name in packages:
+                  actual=installed['packages']['node_modules/'+name];expected=locked['packages']['node_modules/'+name]
+                  assert actual['version']==expected['version'] and actual['integrity']==expected['integrity'] and actual['resolved']==expected['resolved']
+              core=root/'qa/node_modules/playwright-core';metadata=json.loads((core/'browsers.json').read_bytes())
+              chromium=next(b for b in metadata['browsers'] if b['name']=='chromium');assert chromium['revision']=='1248' and chromium['browserVersion']=='156.0.8078.4'
+              retry=[];total=0
+              for file in core.glob('lib/**/*.js'):
+                  data=file.read_bytes();total+=len(data);assert total<=100*1024**2
+                  if re.search(rb'retryCount\s*=\s*5\b',data):retry.append({'file':str(file.relative_to(core)),'sha256':digest(data)})
+              assert len(retry)==1
+              emit({'package_identity':packages,'npm_integrity':'LOCK_MATCH_AFTER_NPM_INTEGRITY_VERIFICATION','installer_attempts_per_artifact':5,'installer_sources':retry,'browser_expected':chromium})
+              # Official CLI only. --no-shell excludes headless shell; the
+              # standard Chromium dependency FFmpeg may also download,5tries each.
+              installer=run('chromium-install',['node','qa/node_modules/playwright/cli.js','install','--no-shell','--no-progress','--no-remove','chromium'],180,root,env)
+              attempts=len(re.findall(rb'Downloading .* from ',installer));assert 1<=attempts<=10
+              emit({'actual_download_attempt_lines':attempts,'one_CLI_invocation':True,'official_CDN_only_no_override':True})
+              executable=stage/'browsers/chromium-1248/chrome-linux64/chrome';assert executable.is_file() and not executable.is_symlink()
+              binary=executable.read_bytes();assert len(binary)==301186376 and digest(binary)=='377a9fc07b495c3b8d0ab8ec1fdfd153641759f9756fea34d8dfce4de82f5025'
+              version=run('binary-version',[str(executable),'--version'],10,root,env);assert b'156.0.8078.4' in version
+              emit({'binary_bytes':len(binary),'binary_sha256':digest(binary),'binary_version':version.decode().strip()})
+              ui_deadline=time.monotonic()+180
+              evidence=stage/'new-ui-evidence';assert not evidence.exists()
+              env.update(QA119_ADMISSION_REF=os.environ['INPUT_ADMISSION'],QA119_EXPECTED_HEAD=os.environ['INPUT_HEAD'],QA119_INVOCATION_ID=os.environ['INPUT_INVOCATION'],QA119_BINARY_SHA256=digest(binary),QA119_EVIDENCE_DIR=str(evidence))
+              raw=run('recorded-panel119',['node','qa/recorded_panel119.cjs'],ui_deadline-time.monotonic(),root,env)
+              result=json.loads(raw.splitlines()[-1]);assert result['status']=='PASS' and result['actual_renderer'] is True
+              assert [v['width'] for v in result['viewports']]==[390,1440] and [v['height'] for v in result['viewports']]==[844,900] and all(v['status']=='PASS' for v in result['viewports'])
+              assert projection()=='RECORDED_SOURCE101_MATCH';assert disk_bytes()<=1024**3
+              outcome='PASS'
+          except BaseException as error:
+              first_error={'type':type(error).__name__,'message':str(error),'at':stamp()};raise
+          finally:
+              if stage:
+                  partial=stage/'new-ui-evidence'/'report.json'
+                  if partial.is_file():
+                      size=partial.stat().st_size
+                      if size<=131072:
+                          try:emit({'partial_recorded_panel_report':json.loads(partial.read_bytes())})
+                          except (ValueError,OSError) as error:emit({'partial_report_error':type(error).__name__,'bytes':size})
+                      else:emit({'partial_report_error':'BOUNDS','bytes':size})
+              emit({'schema':'PAYPROOF_RECORDED_PANEL119_FUTURE_TERMINAL','status':outcome,'first_error':first_error,'records':records,'elapsed_seconds':time.monotonic()-started,'stage':str(stage) if stage else None,'stage_bytes':disk_bytes() if stage else 0,'aggregate_stage_cap':'MONITORED_1GiB_NOT_ATOMIC_QUOTA','ephemeral_cleanup':'Provider runner retirement; child groups killed/reaped by enclosing wrapper on timeout; no artifact upload/cache','native_paypal_qualified':False,'financial_authority':False})
+          PY
