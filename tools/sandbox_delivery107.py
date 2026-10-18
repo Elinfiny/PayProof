@@ -13,7 +13,7 @@ import sys
 import time
 from payproof.admission import (OperatorConfiguration107, OperatorProfile107,
     OperatorSession107, _open_operator_session107, _json, OwnedDispatch108,
-    load_owned_dispatch108)
+    load_owned_dispatch108, WorkflowLaunch109, _WORKFLOW_OWNER109, _WORKFLOW_SYNTHETIC109)
 from payproof.core import InvalidData, UnknownResult, Store, canonical, explain
 from payproof.paypal import SandboxPayPal, BASE
 from payproof.service import annotated_order
@@ -331,6 +331,161 @@ def run_github_operator108(configuration=None, *, store=None, journal=None, admi
             'private_returns_released':not reader._private_returns if reader else None,
             'reader_credentials_dropped':reader.client_id==reader.client_secret=='' if reader else None}}
 
+_PUBLIC_CODES108 |= frozenset({'WORKFLOW_PRIVATE_LAUNCH_REQUIRED109','WORKFLOW_PROFILE_MIX109',
+    'WORKFLOW_CONFIGURATION_MIX109','WORKFLOW_ADMISSION_SHAPE109','WORKFLOW_ADMISSION_BOUNDS109',
+    'WORKFLOW_CALLER_MISMATCH109','WORKFLOW_SOURCE_MISMATCH109','WORKFLOW_OPERATION_MISMATCH109',
+    'WORKFLOW_WINDOW_MISMATCH109','WORKFLOW_ACTUAL_RUN_REQUIRED109','WORKFLOW_ENVIRONMENT_MISSING109',
+    'WORKFLOW_SOURCE_FILE_MISSING109','WORKFLOW_ENVELOPE_SHAPE109'})
+
+_WORKFLOW_PUBLIC_KEYS109=frozenset({'schema','profile','admission_id','intent_version',
+    'consumed_version','intent_sha256','consumed_sha256','stable_effect_key',
+    'repository','repository_id','owner_id','actor_id','ref','event','attempt','job_slug',
+    'source_commit','source_tree','source_sha256','workflow_path','workflow_sha256',
+    'client_id_sha256','order_id_sha256','amount','currency','order_lineage_sha256',
+    'operator_allocation','credential_provenance','not_before','expires_at','call_budget','cash_usd'})
+_WORKFLOW_FIXED109={'repository':'Elinfiny/PayProof','repository_id':'1419908202',
+    'owner_id':'273768139','actor_id':'273768139','ref':'refs/heads/main',
+    'event':'workflow_dispatch','attempt':'1','job_slug':'sandbox_read',
+    'workflow_path':'.github/workflows/payproof-sandbox-delivery108.yml'}
+
+def _provider_process_context109():
+    # Explicit provider context fields only. Never serialize github context/token.
+    # Matching ENV is consistency, not independent proof of provider execution.
+    fields={'repository':'GITHUB_REPOSITORY','repository_id':'GITHUB_REPOSITORY_ID',
+        'owner_id':'PAYPROOF_OWNER_ID109','actor_id':'GITHUB_ACTOR_ID','ref':'GITHUB_REF',
+        'event':'GITHUB_EVENT_NAME','attempt':'GITHUB_RUN_ATTEMPT','job_slug':'GITHUB_JOB',
+        'run_id':'GITHUB_RUN_ID','github_sha':'GITHUB_SHA',
+        'workflow_ref':'PAYPROOF_WORKFLOW_REF109','workflow_source_sha':'PAYPROOF_WORKFLOW_SHA109'}
+    actual={k:os.environ.get(v) for k,v in fields.items()}
+    def git(ref):return subprocess.run(['git','-C',str(ROOT107),'rev-parse',ref],capture_output=True,text=True,timeout=3,check=True).stdout.strip()
+    actual.update(source_commit=git('HEAD'),source_tree=git('HEAD^{tree}'),source_sha256=source_digest107())
+    actual['workflow_path']=_WORKFLOW_FIXED109['workflow_path']
+    path=ROOT107/actual['workflow_path']
+    if not path.is_file():raise InvalidData('WORKFLOW_SOURCE_FILE_MISSING109')
+    actual['workflow_sha256']=hashlib.sha256(path.read_bytes()).hexdigest()
+    return actual
+
+def _validate_workflow109(configuration,admission,actual):
+    if type(configuration) is not OperatorConfiguration107:raise InvalidData('OPERATOR_UNCONFIGURED107')
+    if type(admission) is not dict or set(admission)!=_WORKFLOW_PUBLIC_KEYS109:
+        raise InvalidData('WORKFLOW_ADMISSION_SHAPE109')
+    if len(canonical(admission).encode())>8192:raise InvalidData('WORKFLOW_ADMISSION_BOUNDS109')
+    if admission['schema']!='PAYPROOF_PROVIDER_OWNER_WORKFLOW109' or admission['profile']!='GITHUB_OWNER_WORKFLOW109':
+        raise InvalidData('WORKFLOW_PROFILE_MIX109')
+    import re
+    string_keys=_WORKFLOW_PUBLIC_KEYS109-{'intent_version','consumed_version','call_budget'}
+    if any(type(admission[k]) is not str or not 0<len(admission[k])<=256 for k in string_keys):
+        raise InvalidData('WORKFLOW_ADMISSION_BOUNDS109')
+    for k in ('intent_version','consumed_version','call_budget'):
+        if type(admission[k]) is not int:raise InvalidData('WORKFLOW_ADMISSION_BOUNDS109')
+    if (not 0<=admission['intent_version']<10**9 or admission['consumed_version']!=admission['intent_version']+1
+            or admission['call_budget']!=2 or admission['cash_usd']!='0.00'
+            or not re.fullmatch('[A-Za-z0-9_-]{1,128}',admission['admission_id'])):
+        raise InvalidData('WORKFLOW_ADMISSION_BOUNDS109')
+    for k in ('intent_sha256','consumed_sha256','stable_effect_key','source_sha256','workflow_sha256','client_id_sha256','order_id_sha256','order_lineage_sha256'):
+        if not re.fullmatch('[a-f0-9]{64}',admission[k]):raise InvalidData('WORKFLOW_ADMISSION_BOUNDS109')
+    for k in ('source_commit','source_tree'):
+        if not re.fullmatch('[a-f0-9]{40}',admission[k]):raise InvalidData('WORKFLOW_ADMISSION_BOUNDS109')
+    # Public external-CAS identifiers are descriptive consistency data. The
+    # sender's actual CAS controls its own dispatch; this runtime does not verify
+    # private Library bytes or turn public hashes into an authority.
+    expected_actual_keys=set(_WORKFLOW_FIXED109)|{'run_id','github_sha','workflow_ref',
+        'workflow_source_sha','source_commit','source_tree','source_sha256','workflow_sha256'}
+    if type(actual) is not dict or set(actual)!=expected_actual_keys:
+        raise InvalidData('WORKFLOW_CALLER_MISMATCH109')
+    if any(type(actual[k]) is not str or not 0<len(actual[k])<=256 for k in actual):
+        raise InvalidData('WORKFLOW_CALLER_MISMATCH109')
+    if any(admission[k]!=v or actual[k]!=v for k,v in _WORKFLOW_FIXED109.items()):
+        raise InvalidData('WORKFLOW_CALLER_MISMATCH109')
+    if not re.fullmatch('[1-9][0-9]{0,19}',actual['run_id']):raise InvalidData('WORKFLOW_ACTUAL_RUN_REQUIRED109')
+    expected_workflow_ref='Elinfiny/PayProof/'+_WORKFLOW_FIXED109['workflow_path']+'@refs/heads/main'
+    if (actual['workflow_ref']!=expected_workflow_ref or actual['github_sha']!=admission['source_commit']
+            or actual['workflow_source_sha']!=admission['source_commit']):
+        raise InvalidData('WORKFLOW_SOURCE_MISMATCH109')
+    for key in ('source_commit','source_tree','source_sha256','workflow_sha256'):
+        if actual[key]!=admission[key]:raise InvalidData('WORKFLOW_SOURCE_MISMATCH109')
+    if any(getattr(configuration,k)!=admission[k] for k in ('source_commit','source_tree','source_sha256','client_id_sha256','amount','currency','order_lineage_sha256','operator_allocation','credential_provenance')):
+        raise InvalidData('WORKFLOW_OPERATION_MISMATCH109')
+    stable=hashlib.sha256(canonical(['PayProof','sandbox','orders:read',configuration.client_id_sha256,configuration.order_id]).encode()).hexdigest()
+    if stable!=admission['stable_effect_key'] or hashlib.sha256(configuration.order_id.encode()).hexdigest()!=admission['order_id_sha256']:
+        raise InvalidData('WORKFLOW_OPERATION_MISMATCH109')
+    if admission['not_before']!=configuration.not_before.isoformat() or admission['expires_at']!=configuration.expires_at.isoformat():
+        raise InvalidData('WORKFLOW_WINDOW_MISMATCH109')
+    configuration.validate(source_digest107(),datetime.now(timezone.utc))
+
+def _synthetic_workflow_launch109(configuration,admission,actual):
+    # Inert helper ALWAYS test-sealed; it cannot satisfy the real109 profile.
+    if type(configuration) is not OperatorConfiguration107 or configuration.profile is not OperatorProfile107.SYNTHETIC_FIXTURE:
+        raise InvalidData('WORKFLOW_PROFILE_MIX109')
+    _validate_workflow109(configuration,admission,actual)
+    return WorkflowLaunch109(configuration,canonical(admission).encode(),canonical(actual).encode(),_WORKFLOW_SYNTHETIC109)
+
+def preflight_owner_workflow109(configuration=None,admission=None,*,launch=None):
+    if type(configuration) is not OperatorConfiguration107:raise InvalidData('OPERATOR_UNCONFIGURED107')
+    if launch is not None:
+        if type(launch) is not WorkflowLaunch109:raise InvalidData('WORKFLOW_PRIVATE_LAUNCH_REQUIRED109')
+        record,actual=launch.require(configuration)
+        if record!=admission:raise InvalidData('WORKFLOW_CONFIGURATION_MIX109')
+        _validate_workflow109(configuration,record,actual);return launch
+    if configuration.profile is not OperatorProfile107.GITHUB_OWNER_WORKFLOW109:
+        raise InvalidData('WORKFLOW_PRIVATE_LAUNCH_REQUIRED109')
+    # Explicitly selected, reviewed operator-owned workflow process. No old
+    # OwnedDispatch108 loader, native seal, broker, signing service or numeric job.
+    actual=_provider_process_context109()
+    _validate_workflow109(configuration,admission,actual)
+    return WorkflowLaunch109(configuration,canonical(admission).encode(),canonical(actual).encode(),_WORKFLOW_OWNER109)
+
+def open_owner_workflow109(configuration=None,admission=None,*,journal=None,launch=None,
+        fake_credential_reader=None,clock=None,monotonic=None):
+    launch=preflight_owner_workflow109(configuration,admission,launch=launch)
+    if type(journal) is not OnceJournal107:raise InvalidData('OPERATOR_UNCONFIGURED107')
+    if not launch.test_only and any(x is not None for x in (fake_credential_reader,clock,monotonic)):
+        raise InvalidData('WORKFLOW_PROFILE_MIX109')
+    if launch.test_only and fake_credential_reader is None:raise InvalidData('WORKFLOW_PRIVATE_LAUNCH_REQUIRED109')
+    def protected_pair():
+        return (os.environ.get('PAYPROOF_PAYPAL_SANDBOX_CLIENT_ID'),os.environ.get('PAYPROOF_PAYPAL_SANDBOX_CLIENT_SECRET'))
+    session=_open_operator_session107(configuration,actual_source=source_digest107,
+        credential_reader=fake_credential_reader if launch.test_only else protected_pair,
+        reserve_once=journal.reserve,clock=clock or (lambda:datetime.now(timezone.utc)),
+        profile=configuration.profile,monotonic=monotonic or time.monotonic)
+    return session,launch
+
+def run_owner_workflow109(configuration=None,admission=None,*,store=None,journal=None,
+        launch=None,fake_credential_reader=None,fake_transport=None,clock=None,monotonic=None,
+        assistance=None):
+    session=None;reader=None;primary=None;cleanup=[];receipt=None;stage='WORKFLOW_PREFLIGHT'
+    try:
+        if type(configuration) is not OperatorConfiguration107 or type(store) is not Store:raise InvalidData('OPERATOR_UNCONFIGURED107')
+        row=store.order(configuration.order_id)
+        if (row['amount'],row['currency'])!=(configuration.amount,configuration.currency):raise InvalidData('OPERATOR_EXPECTATION_MISMATCH107')
+        session,launch=open_owner_workflow109(configuration,admission,journal=journal,launch=launch,
+            fake_credential_reader=fake_credential_reader,clock=clock,monotonic=monotonic)
+        stage='WORKFLOW_READ';reader=OperatorOrderReader107(session,fake_transport=fake_transport)
+        receipt=reconcile_operator107(store,reader,assistance=assistance)
+        if reader.first_cause:primary={'code':reader.first_cause,'stage':reader.first_stage}
+        _,actual=launch.require(configuration)
+        receipt['workflow109']={'trust_origin':launch.trust_origin,'run_id':actual['run_id'],
+            'job_slug':actual['job_slug'],'numeric_job_id':None,
+            'numeric_job_id_status':'POST_RUN_CANONICAL_READBACK',
+            'provider_execution_independently_verified':False}
+    except Exception as exc:primary=sanitized_failure108(exc,stage,reader)
+    finally:
+        if reader:
+            try:reader.close()
+            except Exception:cleanup.append('READER_CLOSE109')
+        elif session:
+            try:session.close()
+            except Exception:cleanup.append('SESSION_CLOSE109')
+    return {'primary':primary,'cleanup':cleanup,'receipt':receipt,
+        'lifecycle':{'session_closed':session._closed if session else None,
+            'private_returns_released':not reader._private_returns if reader else None,
+            'reader_credentials_dropped':reader.client_id==reader.client_secret=='' if reader else None}}
+
+def workflow_envelope109(raw):
+    if type(raw) is not dict or set(raw)!={'configuration','admission'}:raise InvalidData('WORKFLOW_ENVELOPE_SHAPE109')
+    if len(canonical(raw).encode())>16384:raise InvalidData('WORKFLOW_ADMISSION_BOUNDS109')
+    return configuration107(raw['configuration']),raw['admission']
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='command')
@@ -339,11 +494,28 @@ def main():
     cloud=sub.add_parser('github-owner-managed');cloud.add_argument('--config',required=True)
     cloud.add_argument('--database',required=True);cloud.add_argument('--journal',required=True)
     cloud.add_argument('--local-ai',action='store_true')
+    for command in ('owner-workflow-preflight109','github-owner-workflow109'):
+        cmd=sub.add_parser(command);cmd.add_argument('--envelope',required=True)
+        if command=='github-owner-workflow109':
+            cmd.add_argument('--database',required=True);cmd.add_argument('--journal',required=True);cmd.add_argument('--local-ai',action='store_true')
     run = sub.add_parser('operator-managed')
     run.add_argument('--config',required=True);run.add_argument('--database',required=True)
     run.add_argument('--journal',required=True);run.add_argument('--local-ai',action='store_true')
     args = parser.parse_args()
     if args.command=='fingerprint':print(source_digest107());return 0
+    if args.command in ('owner-workflow-preflight109','github-owner-workflow109'):
+        try:
+            with open(args.envelope,'rb') as stream:raw=stream.read(16385)
+            if len(raw)>16384:raise InvalidData('WORKFLOW_ADMISSION_BOUNDS109')
+            cfg,admission=workflow_envelope109(_json(raw))
+            if args.command=='owner-workflow-preflight109':
+                preflight_owner_workflow109(cfg,admission);result={'primary':None,'cleanup':[],'stage':'PUBLIC_PREFLIGHT109'}
+            else:
+                if not Path(args.database).is_file():raise InvalidData('OPERATOR_REGISTERED_DATABASE_REQUIRED107')
+                result=run_owner_workflow109(cfg,admission,store=Store(args.database),journal=OnceJournal107(args.journal),
+                    assistance=enable_local_assistance() if args.local_ai else None)
+        except Exception as exc:result={'primary':sanitized_failure108(exc,'WORKFLOW_ENTRY109'),'cleanup':[],'receipt':None}
+        print(json.dumps(result,sort_keys=True));return 0 if result['primary'] is None else 2
     if args.command in ('hosted-preflight','github-owner-managed'):
         try:
             with open(args.config,'rb') as stream:raw=stream.read(16385)
