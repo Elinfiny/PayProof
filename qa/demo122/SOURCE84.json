@@ -1,0 +1,222 @@
+{
+  "contest_ready": false,
+  "dependency": "Fixture imports use standard library under -I -S; cryptography==50.0.2 is declared for native identity modules. No installer or stub. HTTP startup and model fit are not tested121.",
+  "external_AI_integration": false,
+  "fixture_only": true,
+  "historical_84_base_commit": "3d7eb63fbfaf8c3cb9223effecac41f24c6623e3",
+  "historical_84_base_tree": "fc3f4ce717209193eeaf2591020abd28420ae154",
+  "historical_panel_qa120": {
+    "replayed121": false,
+    "result": "PASS",
+    "run_id": 39163115561,
+    "scope": "recorded panel only",
+    "viewports": [
+      "390x844",
+      "1440x900"
+    ]
+  },
+  "local_learned_model_included": true,
+  "local_model_default_enabled": false,
+  "meaning": "Exact private PR candidate source and transport integrity, never runtime authority or contest qualification.",
+  "package_live_paypal_enabled": false,
+  "payload_pins": [
+    {
+      "bytes": 1074,
+      "git_blob": "483ea6c02d3a0182c2d87b5eb2a19e33e214aa17",
+      "path": "LICENSE",
+      "sha256": "b80e0fb01d41fe57e7e01ddc0cfb2cab76bd966c2e6c15968b93571c34d0ce84"
+    },
+    {
+      "bytes": 3884,
+      "git_blob": "8b683e4bd2e40f30131203d0db4bb909eee0d782",
+      "path": "README.md",
+      "sha256": "1e7b4b8a057bd7a8239fdeba2fcba039a26114faa8d22d362b0bf44f4cac6a54"
+    },
+    {
+      "bytes": 477,
+      "git_blob": "1b7bd9c1e345a5b68a7361be5ed906b8219ccb8e",
+      "path": "pyproject.toml",
+      "sha256": "55d43474b40de42cb76b76a6cad06ae1190061969f7f3162c8f99667555a6759"
+    },
+    {
+      "bytes": 71,
+      "git_blob": "be043c4a3b2f9644fddfb8ba64b3be1eef3a3bb6",
+      "path": "payproof/__init__.py",
+      "sha256": "a66bd598ac34f25ff2ea35fd7694fd8584ce8ec644c537ea69dfefcdba9ae087"
+    },
+    {
+      "bytes": 38148,
+      "git_blob": "8dda27412405211fb98cbdd00aba77563b0a2e78",
+      "path": "payproof/admission.py",
+      "sha256": "1f0a242e41e862e69dd86ed8882b16ba75f7207f78671efeeb98f1f052c3f4b2"
+    },
+    {
+      "bytes": 53019,
+      "git_blob": "b6ec17c70697892ac0dc178ceb87332c8bf2883f",
+      "path": "payproof/bootstrap_bridge.py",
+      "sha256": "63d796f20bb8ece0cde4f50875591393926afcaf08c2c9ddb8e0b81aa1832544"
+    },
+    {
+      "bytes": 14204,
+      "git_blob": "d186a28d9296408b7b108941be4a35ada112aa8b",
+      "path": "payproof/core.py",
+      "sha256": "429a7b26ccc6345f40c4a0800d42a33b7225c87b4901eb09544e861931364d72"
+    },
+    {
+      "bytes": 1389,
+      "git_blob": "1d93808700be13faed762b4045167de426e77f94",
+      "path": "payproof/fixtures.py",
+      "sha256": "b149e57b49ac869143e7910ff04314b0cc5b5b8d2c5ef6c3bb64502a28910836"
+    },
+    {
+      "bytes": 34093,
+      "git_blob": "dd27c291990506794416745e7597144bb1bfd10d",
+      "path": "payproof/github_oidc.py",
+      "sha256": "324553275634071576e7f87367d969806b5ed6bcab58d2defc42577ef886a59e"
+    },
+    {
+      "bytes": 2162,
+      "git_blob": "07b72c0fa992126eecd49adaec8c639ef5810dd7",
+      "path": "payproof/inactive_integration71.json",
+      "sha256": "db7f3f1665f884a13dcd430814e8bba59c2246f666eca3d61b3ce0d3c286024b"
+    },
+    {
+      "bytes": 45621,
+      "git_blob": "382b8c1f628f38d34d049f2957b73ca3b5cc97a0",
+      "path": "payproof/job_policy_source42.py",
+      "sha256": "fcd2132ea7c9eb9f7682681e82c1c1f0a717da405ed1871b932a77f523d0947e"
+    },
+    {
+      "bytes": 6428,
+      "git_blob": "b574fe54d52b7a34a1322306f5c9badaea2caf1c",
+      "path": "payproof/paypal.py",
+      "sha256": "289488de2d9d04878c67b99f98e7995b9d869ed0e56dc4b1e9a5d5036cd983c4"
+    },
+    {
+      "bytes": 11786,
+      "git_blob": "c9b05f0d078e9e4186bf1a7a1cc544986bb560b4",
+      "path": "payproof/server.py",
+      "sha256": "ad12ef892df61b9d1f8d61adf1416c6e14d55d5a10cfcf7d30a7ca4dcc175a33"
+    },
+    {
+      "bytes": 4626,
+      "git_blob": "ea0101e39ccfff236c9a8e116f8ec1a4cdff4942",
+      "path": "payproof/service.py",
+      "sha256": "cccd16853afec6c333775860e71780ab029c3b72b6e2ed027de3da8d1e76b7ef"
+    },
+    {
+      "bytes": 9286,
+      "git_blob": "903ef437af84ccde4da223916153f50974a2243a",
+      "path": "payproof/local_ai.py",
+      "sha256": "6b65a825c5ed7289dd9ac948079fceb6c5301c7bcbf56697538f404c05f3a222"
+    },
+    {
+      "bytes": 8318,
+      "git_blob": "a20fb41961983fa9ae996adcd511a4a27d465810",
+      "path": "payproof/local_ai_view.py",
+      "sha256": "7ce4e1503899d78591cf91fddff7d3afaab8048f60bc0609c271888cbd4a1677"
+    },
+    {
+      "bytes": 5611,
+      "git_blob": "44ba9e6b54c8e09e2b165ccf3bc8853813a9da73",
+      "path": "payproof/local_ai_training91.json",
+      "sha256": "ee21d461b563469ce7aeb4d861b6b5ef91cada2bec1e7c3f5f79afaf34ab4023"
+    },
+    {
+      "bytes": 7170,
+      "git_blob": "a04f5785b9a4c81f93841c0bcb57f54a92109e56",
+      "path": "payproof/web/app.js",
+      "sha256": "4ea8b2c3b896698a984d4e2f34d789a15656fed2700b84411249d0a6f6658fb9"
+    },
+    {
+      "bytes": 7116,
+      "git_blob": "6beccdae731eff45566f13989d71ec42907cd878",
+      "path": "payproof/web/index.html",
+      "sha256": "9228f7e7be9bc96567918b2036d8d42874b472a2483eaff73de102e936f6c352"
+    },
+    {
+      "bytes": 4423,
+      "git_blob": "8ef083363391c49636d877173939c7548e5c6d69",
+      "path": "payproof/web/style.css",
+      "sha256": "42d457e036fd5779786f53312bfc2805d64e3c6d2417ab85006dfdb10df68035"
+    },
+    {
+      "bytes": 12716,
+      "git_blob": "e9466ac02890781d6d6aa4d33d84a45736851b53",
+      "path": "tools/read_pilot_driver.py",
+      "sha256": "bae443485ccf35ad1bc3f63e81a5cb48aae32e1a9f119e46d508102b55ad1b2f"
+    },
+    {
+      "bytes": 20799,
+      "git_blob": "ed48acf474b7e11917f5a205560c560b1e3d20eb",
+      "path": "tools/offline_report/export_fixture_report81.py",
+      "sha256": "23d9a3c443b3f691ff43cb1eb665334ac4d6247fff0619ea29eabda219b2d837"
+    },
+    {
+      "bytes": 3827,
+      "git_blob": "ce6030922348b7fbd1a85fe04cf0e873a1c1509b",
+      "path": "tools/offline_report/reporter_contract81.json",
+      "sha256": "bb26df42f05560f818efad8f86e7e01c690482f9446170eb2775e06880aed622"
+    },
+    {
+      "bytes": 8649,
+      "git_blob": "a3f6b8f221027e8cdc5e166a1a8a348bb3d12426",
+      "path": "tools/contest_build84.py",
+      "sha256": "f48ec62dc79dda49a3b0511596bd679b5b80f83111cdc1011c080f78ff91adb6"
+    },
+    {
+      "bytes": 10108,
+      "git_blob": "b1d28f930ec6fcfde557aeab32633ca03547ad00",
+      "path": "tools/contest_launcher84.py",
+      "sha256": "01effded9a11b7fc2668a5920af6c98112130e622c3c0322ebac597e07004896"
+    },
+    {
+      "bytes": 4483,
+      "git_blob": "7748e16a5080b2ff1b734cd3d78afd7b1a492f78",
+      "path": "docs/CONTEST_BUILD84.md",
+      "sha256": "fc7116a7d043a8d59c60cdc12ad3b9f84887a8c80fe4a88cb4969ec0ec063f3a"
+    },
+    {
+      "bytes": 4265,
+      "git_blob": "121dd1fa7cd0df1af9736b4d15f38013f8f46994",
+      "path": "docs/contest.md",
+      "sha256": "365499f0b65d1d3e3435465483a194398759ca08cb26ca5a8a0577dfea85d830"
+    },
+    {
+      "bytes": 5436,
+      "git_blob": "05bf3aedac19d6da435abb3ced1dd5eec4a69023",
+      "path": "docs/demo.md",
+      "sha256": "247e5b568fe04ba2ae1898efe72d02791d225ff710e5b0713e831f1b1ed01f23"
+    },
+    {
+      "bytes": 1291,
+      "git_blob": "4aea3d6ff5c455766ef3765b0e3fe846d2019960",
+      "path": "payproof/web/recorded-run117.json",
+      "sha256": "ab12ba5da5f4ca98b2646f177b48568458e87b08031723d07bd44c220b25d1c4"
+    },
+    {
+      "bytes": 1128,
+      "git_blob": "bafaefb7119f2d051310d7cae298aa2e3c2c9dfa",
+      "path": "payproof/web/recorded-run117.review.json",
+      "sha256": "280faeed3bd7e83110f5ec77b937d4ae4869efc7d2893d93c6a73f2c71160385"
+    }
+  ],
+  "private_reviewer_candidate": true,
+  "recorded117": {
+    "current_session": false,
+    "financial_authority": false,
+    "inner_validation_cause_retained": false,
+    "local_model_state": "READY",
+    "observed_at_utc": "2026-10-18T19:36:29.277776Z",
+    "payment_actions": [],
+    "payment_verified": false,
+    "priority": "unknown",
+    "run_id": 39159527253,
+    "state": "CONFLICT"
+  },
+  "schema": "PAYPROOF_PRIVATE_REVIEWER_SOURCE121",
+  "source_commit": "9d566eba4a7a1b3d73af3708fb4531d35c55129a",
+  "source_pr_url": "https://github.com/Elinfiny/PayProof/pull/26",
+  "source_tree": "6ec6a4e063a211a163675d968f4ec87a4b7685f6",
+  "submitted": false
+}

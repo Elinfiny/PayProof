@@ -1,0 +1,84 @@
+name: PayProof private demo production122
+on:
+  workflow_dispatch:
+    inputs:
+      expected_head:
+        description: Exact frozen independently admitted main head
+        required: true
+        type: string
+      admission_ref:
+        description: External owned consumed-before-submit receipt, metadata not authority
+        required: true
+        type: string
+      invocation_id:
+        description: PAYPROOF-DEMO122-PRIVATE-ONCE
+        required: true
+        type: string
+permissions: {}
+concurrency:
+  group: payproof-demo122-private-once
+  cancel-in-progress: false
+jobs:
+  private-demo:
+    if: false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      INPUT_HEAD: ${{ inputs.expected_head }}
+      INPUT_ADMISSION: ${{ inputs.admission_ref }}
+      INPUT_INVOCATION: ${{ inputs.invocation_id }}
+    steps:
+      - name: Validate independently admitted once binding
+        shell: bash
+        run: |
+          python3 -I -B - <<'PY'
+          import os,re
+          e=os.environ
+          assert e['GITHUB_REPOSITORY']=='Elinfiny/PayProof' and e['GITHUB_REPOSITORY_ID']=='1419908202'
+          assert e['GITHUB_ACTOR']=='Elinfiny' and e['GITHUB_ACTOR_ID']=='273768139'
+          assert e['GITHUB_EVENT_NAME']=='workflow_dispatch' and e['GITHUB_RUN_ATTEMPT']=='1'
+          assert e['GITHUB_REF']=='refs/heads/main' and e['GITHUB_SHA']==e['INPUT_HEAD']
+          assert re.fullmatch('[a-f0-9]{40}',e['INPUT_HEAD'])
+          assert e['INPUT_INVOCATION']=='PAYPROOF-DEMO122-PRIVATE-ONCE'
+          assert e['INPUT_ADMISSION']=='INACTIVE_ADMISSION_REF_122'
+          print('NATIVE_BINDINGS_MATCH_EXTERNAL_OWNED_AUTHORITY_REQUIRED')
+          PY
+      - name: Checkout frozen source
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+        with:
+          ref: ${{ inputs.expected_head }}
+          persist-credentials: false
+          fetch-depth: 2
+          submodules: false
+          lfs: false
+      - name: Qualified Node without cache
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
+        with:
+          node-version: '22.23.3'
+          architecture: x64
+          check-latest: false
+          package-manager-cache: false
+      - name: One private media production, original streams retained
+        id: produce
+        shell: bash
+        run: |
+          python3 -I -B - <<'PY'
+          import hashlib,pathlib
+          expected={'tools/demo122.py':'1a83d721d80c547facdd78671a4b96eaae216eb9fd1c9078b2573ba8c8af93f9','qa/demo122.cjs':'8a2739662e3d3e6da543976eae98c7afaa5e0a80d21cf02fc36c221557fc4704'}
+          for name,sha in expected.items():
+              p=pathlib.Path(name);assert p.is_file() and not p.is_symlink() and hashlib.sha256(p.read_bytes()).hexdigest()==sha
+          PY
+          python3 -I -B tools/demo122.py
+      - name: One private bounded video and compact evidence
+        if: ${{ always() && steps.produce.outputs.video_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: payproof-demo122-private-${{ github.run_id }}
+          path: ${{ steps.produce.outputs.artifact_path }}
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+          overwrite: false
+          include-hidden-files: false
