@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   private-demo:
-    if: ${{ github.event_name == 'workflow_dispatch' && github.repository_id == '1419908202' && github.actor_id == '273768139' && github.run_attempt == 1 && github.ref == 'refs/heads/main' && github.sha == inputs.expected_head && inputs.invocation_id == 'PAYPROOF-DEMO122-PRIVATE-ONCE' }}
+    if: false
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -42,7 +42,7 @@ jobs:
           assert e['GITHUB_REF']=='refs/heads/main' and e['GITHUB_SHA']==e['INPUT_HEAD']
           assert re.fullmatch('[a-f0-9]{40}',e['INPUT_HEAD'])
           assert e['INPUT_INVOCATION']=='PAYPROOF-DEMO122-PRIVATE-ONCE'
-          assert e['INPUT_ADMISSION']=='V28-PAYPAL-122-OWN470-CONSUMED'
+          assert e['INPUT_ADMISSION']=='INACTIVE_ADMISSION_REF_122'
           print('NATIVE_BINDINGS_MATCH_EXTERNAL_OWNED_AUTHORITY_REQUIRED')
           PY
       - name: Checkout frozen source
