@@ -5,6 +5,7 @@ import hashlib
 import io
 import json
 import os
+import re
 from pathlib import Path, PurePosixPath
 import stat
 import subprocess
@@ -24,7 +25,8 @@ ALLOWLIST = (
  'tools/read_pilot_driver.py','tools/offline_report/export_fixture_report81.py',
  'tools/offline_report/reporter_contract81.json','tools/contest_build84.py',
  'tools/contest_launcher84.py','docs/CONTEST_BUILD84.md',
- 'workflow_candidates/payproof-contest-build84.yml.disabled',
+ 'docs/contest.md','docs/demo.md',
+ 'payproof/web/recorded-run117.json','payproof/web/recorded-run117.review.json',
 )
 
 def git_object(kind, data):
@@ -89,10 +91,11 @@ def inventory(root, commit, supplied):
 def main():
  parser=argparse.ArgumentParser(description=__doc__)
  parser.add_argument('--root',type=Path,required=True);parser.add_argument('--output',type=Path,required=True)
- parser.add_argument('--source-commit',required=True);parser.add_argument('--source-tree',required=True);parser.add_argument('--inventory')
+ parser.add_argument('--source-pr-url',required=True);parser.add_argument('--source-commit',required=True);parser.add_argument('--source-tree',required=True);parser.add_argument('--inventory')
  args=parser.parse_args();root=args.root.absolute();output=args.output.absolute()
  if root.is_symlink() or output.exists() or output.is_symlink():raise ValueError('Explicit stable source and absent output required')
  if any(len(v)!=40 or any(c not in '0123456789abcdef' for c in v) for v in [args.source_commit,args.source_tree]):raise ValueError('Exact Git source identifiers required')
+ if not re.fullmatch(r'https://github\.com/Elinfiny/PayProof/pull/[1-9][0-9]*',args.source_pr_url):raise ValueError('Actual private PR URL required')
  entries=inventory(root,args.source_commit,args.inventory)
  if tree_hash(entries)!=args.source_tree:raise ValueError('Complete inventory Merkle differs')
  known={e['path']:e for e in entries};payload={};pins=[]
@@ -100,7 +103,7 @@ def main():
   b=bounded_source(root,name);e=known[name]
   if e['type']!='blob' or e['mode']!='100644' or git_object('blob',b)!=e['sha']:raise ValueError('Source does not match exact Git inventory: '+name)
   payload[name]=b;pins.append({'path':name,'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest(),'git_blob':e['sha']})
- provenance={'schema':'PAYPROOF_CURRENT_LOCAL_MODEL_SOURCE105','historical_84_base_commit':BASE_COMMIT,'historical_84_base_tree':BASE_TREE,'source_commit':args.source_commit,'source_tree':args.source_tree,'payload_pins':pins,'fixture_only':True,'actual_PayPal_integration_qualified':False,'local_learned_model_included':True,'local_model_default_enabled':False,'external_AI_integration':False,'contest_ready':False,'dependency':'Fixture source entry is qualified with -I -S; declared cryptography==50.0.2 remains required for native identity modules. No installer or crypto stub is bundled.','meaning':'Source-integrity metadata, never an admission or provider grant.'}
+ provenance={'schema':'PAYPROOF_PRIVATE_REVIEWER_SOURCE121','historical_84_base_commit':BASE_COMMIT,'historical_84_base_tree':BASE_TREE,'source_pr_url':args.source_pr_url,'source_commit':args.source_commit,'source_tree':args.source_tree,'payload_pins':pins,'private_reviewer_candidate':True,'submitted':False,'fixture_only':True,'package_live_paypal_enabled':False,'local_learned_model_included':True,'local_model_default_enabled':False,'external_AI_integration':False,'contest_ready':False,'recorded117':{'run_id':39159527253,'observed_at_utc':'2026-10-18T19:36:29.277776Z','state':'CONFLICT','local_model_state':'READY','priority':'unknown','financial_authority':False,'payment_actions':[],'inner_validation_cause_retained':False,'current_session':False,'payment_verified':False},'historical_panel_qa120':{'run_id':39163115561,'scope':'recorded panel only','viewports':['390x844','1440x900'],'result':'PASS','replayed121':False},'dependency':'Fixture imports use standard library under -I -S; cryptography==50.0.2 is declared for native identity modules. No installer or stub. HTTP startup and model fit are not tested121.','meaning':'Exact private PR candidate source and transport integrity, never runtime authority or contest qualification.'}
  payload['SOURCE84.json']=(json.dumps(provenance,sort_keys=True,indent=2)+'\n').encode()
  manifest=io.StringIO(newline='');writer=csv.writer(manifest);writer.writerow(['relative_path','size_bytes','sha256'])
  for name,b in sorted(payload.items()):writer.writerow([name,len(b),hashlib.sha256(b).hexdigest()])
@@ -118,6 +121,6 @@ def main():
   if archive.testzip() is not None or len(archive.namelist())!=len(payload):raise RuntimeError('UNKNOWN archive readback')
   for name,b in payload.items():
    if archive.read('PayProof_contest84/'+name)!=b:raise RuntimeError('UNKNOWN body readback')
- print(json.dumps({'status':'BUILD_CREATED','bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest(),'members':len(payload),'source_commit':args.source_commit,'source_tree':args.source_tree,'fixture_only':True,'local_learned_model_included':True,'local_model_default_enabled':False,'external_model_calls':0,'installer_calls':0,'provider_calls':0}))
+ print(json.dumps({'status':'BUILD_CREATED','source_pr_url':args.source_pr_url,'private_reviewer_candidate':True,'submitted':False,'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest(),'members':len(payload),'source_commit':args.source_commit,'source_tree':args.source_tree,'fixture_only':True,'local_learned_model_included':True,'local_model_default_enabled':False,'external_model_calls':0,'installer_calls':0,'provider_calls':0}))
 
 if __name__=='__main__':main()

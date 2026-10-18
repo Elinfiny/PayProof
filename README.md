@@ -1,52 +1,63 @@
-# PayProof
+# PayProof — know when to wait
 
-Payment evidence explained for freelancers. This is a **private synthetic development slice**: no PayPal account is connected, no live AI runs, and no real money moves. It is not a contest-ready submission.
+PayProof helps freelancers separate an approved order from evidence of paid work.
+It combines a visible evidence state with advisory assistance that can abstain.
+No model can capture, refund or authorize a payment through this application.
 
-## Run
+This is a **private reviewer candidate**, not a submitted contest entry.
+The exact private PR, candidate commit and complete Git tree are recorded in the
+generated `SOURCE84.json` (`source_pr_url`, `source_commit`, `source_tree`). The
+candidate branch is `review/payproof-reviewer-build121-20261018`; source remains
+canonical in the private [Elinfiny/PayProof repository](https://github.com/Elinfiny/PayProof).
+The document cannot embed the hash of the future commit containing itself.
 
-Python 3.11+ is the only runtime dependency. From the extracted project directory:
+| What you can examine | Evidence and meaning |
+| --- | --- |
+| Interactive offline fixture | Synthetic scenarios in the local UI; deterministic wording by default, model disabled. No current PayPal session. |
+| Recorded real Sandbox result117 | Saved 18 October 2026 at 19:36:29.277776Z: CONFLICT; local model READY but priority unknown; no payment verified. The panel reads a bundled sanitized record, not PayPal. |
+| Remaining proof | No successful paid/captured lifecycle, authentic webhook, hosted judge session, published video or submitted entry is established by this ZIP. |
+
+## Start reviewing
+
+Read [the package guide](docs/CONTEST_BUILD84.md), then the
+[2:40 English walkthrough](docs/demo.md). Python3.11+ with standard-library SQLite
+and POSIX private-directory semantics is required for the fixture source entry.
+Extract the reviewer ZIP into a fresh directory and keep its files unchanged.
+Inside `PayProof_contest84/`, create a **new** empty data directory outside the
+package and run:
 
 ```sh
-python3 -m payproof.server
+mkdir -m 700 /tmp/payproof-reviewer-new
+python3 -I -S -B tools/contest_launcher84.py --data-dir /tmp/payproof-reviewer-new --port 8765
 ```
 
-Open `http://127.0.0.1:8765`. On Windows, use `py -m payproof.server` if appropriate. The server binds to loopback and is intended for one local reviewer, not public hosting.
+Open http://127.0.0.1:8765 on that machine. This is a reviewer run instruction;
+build121 did not start HTTP or a browser. Ctrl+C stops the server. A later run
+needs another fresh data directory. Do not use real customer data. No installer,
+PayPal credentials or external AI account is needed for the default fixture.
+The launcher checks every manifest member before starting the fixture.
 
-```sh
-python3 -m unittest discover -s tests -v
-```
+The unchanged project dependency `cryptography==50.0.2` belongs to native identity
+modules; the fixture entry imports only standard-library dependencies under
+`-I -S -B`. It is neither installed nor replaced by a stub in this delivery.
+The optional existing `--local-ai` fits the bundled synthetic local model; it is
+off by default and was not run121. Included model code is not a live model API.
 
-Optional installation: `python3 -m pip install .` (the build tool may be downloaded by pip). No package installation is necessary for source execution. Static assets are included in the package.
+## Evidence you can follow
 
-## Try the complete private workflow
+- [Recorded117](payproof/web/recorded-run117.json) and its
+  [review notes](payproof/web/recorded-run117.review.json) preserve the sanitized
+  original conclusion. The original [run39159527253](https://github.com/Elinfiny/PayProof/actions/runs/39159527253)
+  performed one OAuth request and one registered-order GET, not a payment action.
+- The explanation is “Order facts conflict with the registered expectation.”
+  The precise inner validation cause was not retained. A guessed amount mismatch
+  or freshness failure is not proof of that historical cause.
+- [Panel QA120](https://github.com/Elinfiny/PayProof/actions/runs/39163115561)
+  passed recorded-panel checks at 390×844 and 1440×900. This scoped historical
+  result is not a new whole-product or contest-readiness test.
+- The ZIP's `MANIFEST.csv` and `SOURCE84.json` bind all included files to the
+  actual candidate and distinguish transport integrity from runtime authority.
 
-1. Choose **Approved** and read the synthetic order. Approval is distinguished from capture.
-2. Choose **Completed capture**, deliver the synthetic webhook, then redeliver it. The duplicate has no second state effect.
-3. Choose **Provider unavailable**. A fresh read reports UNKNOWN; earlier reliable evidence remains clearly historical.
-4. Choose **Completed capture** and read again to reconcile. No payment operation is repeated.
-5. Choose an amount conflict or missing capture. The app abstains from calling it paid.
-6. Turn off simulated authenticity and deliver an event. It is rejected. Export the sanitized synthetic evidence as JSON.
-
-The webhook lab is explicitly a **verification stub**. It does not demonstrate actual PayPal authentication. Explanations are deterministic and explicitly labeled **not live AI**.
-
-## Architecture and safety
-
-- Standard-library Python HTTP server, SQLite transactional event ledger, plain HTML/CSS/JavaScript.
-- Immutable registered order ID/amount/currency; allowlisted facts only. Payer data and provider credentials are never exported.
-- Webhooks do not directly set payment state. An authentic event triggers authoritative order reconciliation. Duplicate IDs with changed content fail closed. Older provider observations cannot overwrite newer reliable evidence.
-- Completed order status alone is insufficient; matching completed captures are required. Refunds, mixed captures and unsupported statuses require review.
-- The prepared `SandboxPayPal` adapter only permits OAuth, create order, read order and verify webhook paths at the fixed sandbox host. Redirects are rejected. There is no capture, refund or transfer method. A public boolean cannot activate it: the adapter requires a sealed host context from a signed, expiring admission bound to this exact source and sandbox application.
-- Create order reserves its request ID durably before network access. A timeout/uncertain response retains UNKNOWN. This build has no UI to call the adapter.
-- Real signature verification is prepared using original bounded event bytes and PayPal's verification endpoint; verified only with fake transport so far.
-- SQLite stores sanitized facts and payload digests, not full webhook bodies. Database files are excluded from the deliverable.
-- Host/origin checks, custom request header, body limits, CSP and text-only rendering protect the fixture interface.
-
-## Remaining gates
-
-Auditor V28 confirmed Basics/TraceHarbor isolation for the examined private scope. Sandbox access and custody are still unqualified. The real checkout lifecycle, real authenticated webhooks and actual PayPal order reads remain unexecuted. Live AI requires a qualified provider, secret custody, numeric budget and enforceable cap; no numeric grant is currently admitted. Publication, deployment and submission require independent review. Do not put credentials in this repository, frontend, exported evidence or chat.
-
-The current authorized external API/model spending ceiling is **USD 0**. The private fixture mode has no external service calls. Subscription/runtime consumption is not measured here. Future hosting/model costs must be estimated and capped after choosing an admitted route.
-
-Project source is held privately in Elinfiny/PayProof. Use the exact reviewed commit as the source reference; historical archives remain transfer carriers. Public publication, deployment and submission have not been performed.
-
-See `docs/scope.md`, `docs/architecture.md`, `docs/service_contract.md`, `docs/contest.md`, `docs/demo.md`, and the verification reports for exact scope and evidence.
+[Contest conditions](docs/contest.md) remain open. Repository visibility is
+private; no merge, deployment, video upload, terms acceptance or submission is
+performed by this delivery. Licensed under [MIT](LICENSE).

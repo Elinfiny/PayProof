@@ -1,5 +1,35 @@
 # PayProof project boundary
 
+## CURRENT — private reviewer delivery121, 18 October 2026
+
+The paragraphs below are preserved historical instructions. Later exact admissions
+superseded their stage-specific account-access, private source and QA holds only
+for their recorded scopes: real Sandbox read117 completed once; recorded-panel
+QA120 passed two viewports and its workflow was restored dormant. Neither may be
+replayed. The old account-access hold is not a blocker for this private package.
+
+Current authority: Auditor V28 direction121, policy97. Sole writer PayPal V1 may
+change only documentation/AGENTS and the existing builder/launcher as needed for
+one complete private reviewer ZIP. Create only
+review/payproof-reviewer-build121-20261018 and one private draft PR; no main merge,
+workflow/CI activation or dispatch. Bind the ZIP to the actual candidate commit,
+tree and PR; one new build and one packaging group with at most three checks.
+No HTTP/browser launch, model fit, provider call, installation or spending in121.
+Use real available dependencies and a fresh isolated extraction; preserve original
+failures and partial outputs without repair-and-replay. Keep the 786432-byte
+compressed and uncompressed cap, strict manifest and source pins.
+
+Default execution remains an offline synthetic fixture with deterministic wording.
+The saved117 panel is historical real Sandbox evidence: CONFLICT, local model
+READY, priority unknown, financial_authority false and payment_actions empty.
+It proves no payment/capture/authentic webhook. Its inner validation cause was
+not retained; do not invent one. Public repository, hosting, video, eligibility,
+terms and submission remain separate unfinished conditions. Preserve consumed
+CREATE113/READ117/QA120 claims and all UNKNOWN outcomes. No shared project,
+policy, Master, secret, account setting, provider or financial mutation.
+
+## Historical instructions (retained verbatim)
+
 One writer: PayPal V1, until a verified project handoff. This project is not a new Master.
 Only this isolated project may be modified. No server/UBC, other project, global policy, registry or peer checkpoint changes.
 Current stage: private synthetic slice. No account access, live credentials, live AI, real payments, publication, deployment or submission.
