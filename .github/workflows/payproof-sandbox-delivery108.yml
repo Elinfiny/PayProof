@@ -10,7 +10,7 @@ permissions:
   contents: read
 jobs:
   sandbox_read:
-    if: ${{ github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && github.ref == 'refs/heads/main' }}
+    if: false # INACTIVE: future activation requires separately reviewed exact delta.
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     environment: payproof-sandbox-readonly
