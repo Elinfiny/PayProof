@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   local-ui:
-    if: false
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.actor == 'Elinfiny' && github.actor_id == '273768139' && github.run_attempt == 1
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -42,7 +42,7 @@ jobs:
           assert e['GITHUB_EVENT_NAME']=='workflow_dispatch'
           assert e['GITHUB_RUN_ATTEMPT']=='1' and e['GITHUB_REF']=='refs/heads/main'
           assert re.fullmatch('[a-f0-9]{40}',e['INPUT_HEAD']) and e['GITHUB_SHA']==e['INPUT_HEAD']
-          assert e['INPUT_ADMISSION']=='INACTIVE_ADMISSION_REF_119'
+          assert e['INPUT_ADMISSION']=='libfile_0d2a90447ebc8191b0006069e714dcb7@456'
           assert e['INPUT_INVOCATION']=='PAYPROOF-RECORDED-PANEL120-ONCE'
           assert e['INPUT_INVOCATION']!='PAYPROOF-RESPONSIVE104-20261018-ONCE'
           assert re.fullmatch(r'[A-Za-z0-9_:@./+-]{1,200}',e['INPUT_ADMISSION'])
