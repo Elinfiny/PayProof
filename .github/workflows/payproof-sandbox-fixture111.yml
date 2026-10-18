@@ -10,7 +10,7 @@ permissions:
   contents: read
 jobs:
   sandbox_fixture:
-    if: false # INACTIVE: future activation requires separately reviewed exact delta.
+    if: ${{ github.event_name == 'workflow_dispatch' && github.repository == 'Elinfiny/PayProof' && github.repository_id == '1419908202' && github.repository_owner_id == '273768139' && github.actor_id == '273768139' && github.ref == 'refs/heads/main' && github.run_attempt == 1 }} # ONE bounded Owner Sandbox fixture; external consumed claim required.
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     environment: payproof-sandbox-readonly
