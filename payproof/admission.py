@@ -430,6 +430,7 @@ import re as _operator_re107
 
 class OperatorProfile107(Enum):
     OWNER_MANAGED_SANDBOX = 'OWNER_MANAGED_SANDBOX'
+    GITHUB_OWNER_MANAGED_SANDBOX = 'GITHUB_OWNER_MANAGED_SANDBOX'
     SYNTHETIC_FIXTURE = 'SYNTHETIC_FIXTURE'
 
 _OPERATOR_SEAL107 = object()
@@ -488,6 +489,8 @@ class OperatorSession107:
     _seal: object = field(repr=False)
     _clock: object = field(repr=False)
     _source: object = field(repr=False)
+    _monotonic: object = field(repr=False, default=None)
+    _monotonic_deadline: float = field(repr=False, default=0.0)
     _closed: bool = field(default=False, repr=False)
 
     def __post_init__(self):
@@ -514,6 +517,8 @@ class OperatorSession107:
         if profile is not None and profile is not self._configuration.profile:
             raise InvalidData('OPERATOR_PROFILE_MIX107')
         self.__post_init__()
+        if not callable(self._monotonic) or self._monotonic() >= self._monotonic_deadline:
+            raise InvalidData('OPERATOR_MONOTONIC_EXPIRED108')
         self._configuration.validate(self._source(), self._clock())
 
     def close(self):
@@ -522,7 +527,7 @@ class OperatorSession107:
         self._closed = True
 
 def _open_operator_session107(configuration, *, actual_source, credential_reader,
-                              reserve_once, clock, profile):
+                              reserve_once, clock, profile, monotonic=None):
     """Called by the explicit private entry, never by an HTTP request.
 
     The credential callback and durable journal are operator-controlled inputs,
@@ -531,14 +536,21 @@ def _open_operator_session107(configuration, *, actual_source, credential_reader
     if (type(configuration) is not OperatorConfiguration107
             or configuration.profile is not profile or type(profile) is not OperatorProfile107):
         raise InvalidData('OPERATOR_PROFILE_MIX107')
-    configuration.validate(actual_source(), clock())  # Before credentials or network.
+    import time
+    monotonic = monotonic or time.monotonic
+    started_wall = clock()
+    configuration.validate(actual_source(), started_wall)  # Before credentials or network.
+    deadline = monotonic() + min(120.0,(configuration.expires_at-started_wall).total_seconds())
     if not callable(credential_reader) or not callable(reserve_once):
         raise InvalidData('OPERATOR_PRIVATE_BOUNDARY_REQUIRED107')
     # Stable logical effect key: a different public once_id cannot rearm this order.
     key = hashlib.sha256(canonical(['PayProof','sandbox','orders:read',
-        configuration.client_id_sha256, configuration.order_id,
-        configuration.order_lineage_sha256]).encode()).hexdigest()
-    reserve_once(key)  # Committed before the first credential read; unknown stays consumed.
+        configuration.client_id_sha256, configuration.order_id]).encode()).hexdigest()
+    metadata = {'order_lineage_sha256':configuration.order_lineage_sha256,
+        'once_id':configuration.once_id,'source_sha256':configuration.source_sha256,
+        'source_commit':configuration.source_commit,'source_tree':configuration.source_tree,
+        'not_before':configuration.not_before.isoformat(),'expires_at':configuration.expires_at.isoformat()}
+    reserve_once(key,metadata)  # Labels attach to the same identity; never rearm it.
     values = credential_reader()
     if (type(values) is not tuple or len(values) != 2
             or any(type(v) is not str or not 0 < len(v) <= 4096 or '\n' in v or '\r' in v for v in values)):
@@ -546,6 +558,77 @@ def _open_operator_session107(configuration, *, actual_source, credential_reader
     if hashlib.sha256(values[0].encode()).hexdigest() != configuration.client_id_sha256:
         raise InvalidData('OPERATOR_APPLICATION_MISMATCH107')
     configuration.validate(actual_source(), clock())
+    if monotonic() >= deadline:
+        raise InvalidData('OPERATOR_MONOTONIC_EXPIRED108')
     return OperatorSession107(configuration, values[0], values[1],
         _OPERATOR_TEST_SEAL107 if profile is OperatorProfile107.SYNTHETIC_FIXTURE else _OPERATOR_SEAL107,
-        clock, actual_source)
+        clock, actual_source, monotonic, deadline)
+
+
+# External dispatcher projections identify an admitted run; they do not grant it.
+# Native creation must be supplied by the separately qualified conditional-own
+# journal producer bound to the actual first GitHub run/job. No public loader,
+# signing key, runtime Library reader or environment boolean is an authority.
+_DISPATCH_NATIVE108 = object()
+_DISPATCH_SYNTHETIC108 = object()
+
+@dataclass(frozen=True, repr=False)
+class OwnedDispatch108:
+    _record: bytes = field(repr=False)
+    _seal: object = field(repr=False)
+    _provider_run_id: str = field(repr=False)
+    _provider_job_id: str = field(repr=False)
+
+    def __post_init__(self):
+        if self._seal not in (_DISPATCH_NATIVE108,_DISPATCH_SYNTHETIC108):
+            raise InvalidData('EXTERNAL_DISPATCH_PROVIDER_BINDING_REQUIRED108')
+
+    @property
+    def test_only(self):return self._seal is _DISPATCH_SYNTHETIC108
+
+    def require(self, *, synthetic=False):
+        self.__post_init__()
+        if self.test_only is not synthetic:
+            raise InvalidData('EXTERNAL_DISPATCH_PROFILE_MIX108')
+        record = _json(self._record)
+        required={'schema','producer','stable_effect_key','admission_id','intent_version',
+            'consumed_version','intent_sha256','consumed_sha256','previous_sha256',
+            'source_commit','source_tree','source_sha256','workflow_sha256',
+            'workflow_path','repository_id','owner_id','actor_id','run_id','job_id',
+            'job_name','attempt','ref','event','registered_lineage_sha256'}
+        required |= {'client_id_sha256','order_id_sha256','expected_amount','expected_currency',
+                     'operator_allocation','credential_provenance'}
+        if set(record)!=required or record['schema']!='PAYPROOF_OWN_CONDITIONAL_DISPATCH108':
+            raise InvalidData('EXTERNAL_DISPATCH_RECORD108')
+        if (record['producer']!='PayPal V1 conditional own journal'
+                or type(record['intent_version']) is not int
+                or record['consumed_version']!=record['intent_version']+1
+                or record['previous_sha256']!=record['intent_sha256']):
+            raise InvalidData('EXTERNAL_DISPATCH_CHAIN108')
+        for key in ('stable_effect_key','intent_sha256','consumed_sha256','previous_sha256',
+                    'source_sha256','workflow_sha256','registered_lineage_sha256',
+                    'client_id_sha256','order_id_sha256'):_digest(record[key])
+        for key in ('source_commit','source_tree'):_digest(record[key],40)
+        for key in ('run_id','job_id'):
+            if type(record[key]) is not str or not _operator_re107.fullmatch('[1-9][0-9]{0,19}',record[key]):
+                raise InvalidData('EXTERNAL_DISPATCH_RUN_JOB108')
+        if (record['run_id']!=self._provider_run_id or record['job_id']!=self._provider_job_id):
+            raise InvalidData('EXTERNAL_DISPATCH_ACTUAL_FIRST_RUN108')
+        fixed={'repository_id':'1419908202','owner_id':'273768139','actor_id':'273768139',
+            'attempt':'1','ref':'refs/heads/main','event':'workflow_dispatch',
+            'job_name':'sandbox_read','workflow_path':'.github/workflows/payproof-sandbox-delivery108.yml'}
+        if any(type(record[k]) is not type(v) or record[k]!=v for k,v in fixed.items()):
+            raise InvalidData('EXTERNAL_DISPATCH_CALLER108')
+        if type(record['admission_id']) is not str or not _operator_re107.fullmatch('[A-Za-z0-9_-]{1,128}',record['admission_id']):
+            raise InvalidData('EXTERNAL_DISPATCH_ADMISSION108')
+        return record
+
+    def __reduce_ex__(self,protocol):raise TypeError('Dispatch bindings are process-private')
+
+def load_owned_dispatch108():
+    # This is the exact remaining provider adapter fact, not a fabricated seal:
+    # authentic own CAS INTENT->CONSUMED readback, single actual dispatch and its
+    # first actual run/job binding, delivered to the same admitted runtime.
+    # The current surface exposes no such runtime bridge. Public data cannot
+    # substitute for it. Implementing/qualifying that bridge requires review.
+    raise InvalidData('MISSING_OWN_CAS_FIRST_RUN_JOB_ADAPTER108')
