@@ -1,9 +1,9 @@
-name: PayProof owner-managed cloud Sandbox candidate108 INACTIVE
+name: PayProof owner-managed cloud Sandbox candidate109 INACTIVE
 on:
   workflow_dispatch:
     inputs:
       public_configuration:
-        description: Reviewed public data only; never authority or credentials
+        description: Reviewed configuration/admission envelope; no credentials or authority
         required: true
         type: string
 permissions:
@@ -41,24 +41,31 @@ jobs:
         run: |
           umask 077
           mkdir -p "$RUNNER_TEMP/payproof108"
-          python3 -I -c 'import os,pathlib; b=os.environ["PUBLIC_CONFIGURATION"].encode(); assert len(b)<=16384; pathlib.Path(os.environ["RUNNER_TEMP"],"payproof108","configuration.json").write_bytes(b)'
-      - name: Validate external consumed first run and whole source BEFORE credentials
+          python3 -I -c 'import os,pathlib; b=os.environ["PUBLIC_CONFIGURATION"].encode(); assert len(b)<=16384; pathlib.Path(os.environ["RUNNER_TEMP"],"payproof108","envelope109.json").write_bytes(b)'
+      - name: New109 whole source and caller preflight BEFORE credentials
+        env:
+          PAYPROOF_OWNER_ID109: ${{ github.repository_owner_id }}
+          PAYPROOF_WORKFLOW_REF109: ${{ github.workflow_ref }}
+          PAYPROOF_WORKFLOW_SHA109: ${{ github.workflow_sha }}
         run: |
-          python3 -I -c 'import runpy,sys; sys.path.insert(0,"."); sys.argv=["delivery108","hosted-preflight","--config",sys.argv[1]]; runpy.run_module("tools.sandbox_delivery107",run_name="__main__")' "$RUNNER_TEMP/payproof108/configuration.json"
-      # Current preflight returns MISSING_OWN_CAS_FIRST_RUN_JOB_ADAPTER108.
-      # Public JSON, ENV metadata and concurrency labels cannot bypass that fact.
+          python3 -I -c 'import runpy,sys; sys.path.insert(0,"."); sys.argv=["delivery108","owner-workflow-preflight109","--envelope",sys.argv[1]]; runpy.run_module("tools.sandbox_delivery107",run_name="__main__")' "$RUNNER_TEMP/payproof108/envelope109.json"
+      # New109 trusts the explicitly reviewed provider-managed Owner process.
+      # External own CAS controls the sender; public hashes/ENV do not prove custody.
       - name: Register the separately authenticated expectation without provider calls
         run: |
-          python3 -I -c 'import json,sys; sys.path.insert(0,"."); from payproof.core import Store; c=json.load(open(sys.argv[1])); Store(sys.argv[2]).register(c["order_id"],c["amount"],c["currency"])' "$RUNNER_TEMP/payproof108/configuration.json" "$RUNNER_TEMP/payproof108/orders.sqlite"
-      - name: Single already-gated owner-managed runtime step
+          python3 -I -c 'import json,sys; sys.path.insert(0,"."); from payproof.core import Store; c=json.load(open(sys.argv[1]))["configuration"]; Store(sys.argv[2]).register(c["order_id"],c["amount"],c["currency"])' "$RUNNER_TEMP/payproof108/envelope109.json" "$RUNNER_TEMP/payproof108/orders.sqlite"
+      - name: Single already-gated provider-managed Owner workflow109
         env:
+          PAYPROOF_OWNER_ID109: ${{ github.repository_owner_id }}
+          PAYPROOF_WORKFLOW_REF109: ${{ github.workflow_ref }}
+          PAYPROOF_WORKFLOW_SHA109: ${{ github.workflow_sha }}
           PAYPROOF_PAYPAL_SANDBOX_CLIENT_ID: ${{ secrets.PAYPROOF_PAYPAL_SANDBOX_CLIENT_ID }}
           PAYPROOF_PAYPAL_SANDBOX_CLIENT_SECRET: ${{ secrets.PAYPROOF_PAYPAL_SANDBOX_CLIENT_SECRET }}
         run: |
-          python3 -I -c 'import runpy,sys; sys.path.insert(0,"."); sys.argv=["delivery108","github-owner-managed","--config",sys.argv[1],"--database",sys.argv[2],"--journal",sys.argv[3],"--local-ai"]; runpy.run_module("tools.sandbox_delivery107",run_name="__main__")' "$RUNNER_TEMP/payproof108/configuration.json" "$RUNNER_TEMP/payproof108/orders.sqlite" "$RUNNER_TEMP/payproof108/once.sqlite"
+          python3 -I -c 'import runpy,sys; sys.path.insert(0,"."); sys.argv=["delivery108","github-owner-workflow109","--envelope",sys.argv[1],"--database",sys.argv[2],"--journal",sys.argv[3],"--local-ai"]; runpy.run_module("tools.sandbox_delivery107",run_name="__main__")' "$RUNNER_TEMP/payproof108/envelope109.json" "$RUNNER_TEMP/payproof108/orders.sqlite" "$RUNNER_TEMP/payproof108/once.sqlite"
       - name: Drop ephemeral files on success or failure
         if: always()
         run: |
-          rm -f -- "$RUNNER_TEMP/payproof108/configuration.json" "$RUNNER_TEMP/payproof108/orders.sqlite" "$RUNNER_TEMP/payproof108/orders.sqlite-journal" "$RUNNER_TEMP/payproof108/once.sqlite" "$RUNNER_TEMP/payproof108/once.sqlite-journal"
+          rm -f -- "$RUNNER_TEMP/payproof108/envelope109.json" "$RUNNER_TEMP/payproof108/orders.sqlite" "$RUNNER_TEMP/payproof108/orders.sqlite-journal" "$RUNNER_TEMP/payproof108/once.sqlite" "$RUNNER_TEMP/payproof108/once.sqlite-journal"
       # External canonical consumed record is NEVER reset/deleted by this job.
       # No installer, OIDC, upload, external AI or financial mutation.
