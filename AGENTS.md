@@ -70,3 +70,22 @@ closure <=128MiB/180s, no mirror or general upgrade. Audio gate cannot block fir
 useful capture. One private artifact <=32MiB, retention1day, cache0. Preserve
 original streams and partial media; assembly of that same capture is allowed,
 repair-and-recapture is not. A private movie does not prove contest eligibility.
+
+
+## CURRENT123 — private release preparation
+
+The current source baseline is main031c9fe/tree2974, after the actual private
+reviewer and media merges; the earlier121 selector is historical. Direction123
+admits one normal private head-bound release-preparation PR for documentation,
+setup, notices and final English submission/video copy. Keep all product/model/
+corpus/financial/runtime/QA/workflow blobs unchanged. No merge or public effect
+is performed in this source-only candidate. A protected read-only finite audit
+inspected55refs/98commits/66trees/174distinctblobs; its rules are not a qualified
+scanner and it is not a complete privacy/security PASS. Raw historical logs and
+other uncovered surfaces remain explicit review dependencies. No hosted audit
+job, install, provider/OAuth/orderGET/payment, fit, capture, mediaassembly, ZIP
+rebuild, billing, publicvisibility, YouTube upload, terms or submission is admitted
+by this candidate. Preserve all prior once-consumed claims, UNKNOWN/FAIL results,
+the accepted private160s film and exact dormant workflow. Only the existing
+Auditor reviews the next public-effect scope; no other project or checkpoint
+may be changed.
