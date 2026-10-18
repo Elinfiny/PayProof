@@ -16,7 +16,7 @@ def verify_build(root):
  manifest=root/'MANIFEST.csv'
  if manifest.is_symlink() or not 0<manifest.stat().st_size<=16384:raise ValueError('Manifest bound')
  rows=list(csv.DictReader(manifest.open(newline='')));names=set()
- if len(rows)!=28 or len(rows)>32:raise ValueError('Manifest row bound')
+ if len(rows)!=31 or len(rows)>32:raise ValueError('Manifest row bound')
  for row in rows:
   name=row['relative_path'];p=PurePosixPath(name)
   if p.is_absolute() or '..' in p.parts or str(p)!=name or name in names:raise ValueError('Unsafe manifest path')
@@ -29,9 +29,9 @@ def verify_build(root):
   b=path.read_bytes()
   if hashlib.sha256(b).hexdigest()!=row['sha256']:raise ValueError('Manifest digest mismatch')
  actual={str(p.relative_to(root)) for p in root.rglob('*') if p.is_file()}
- if len(actual)!=29 or actual!=names|{'MANIFEST.csv'}:raise ValueError('Unexpected build payload')
+ if len(actual)!=32 or actual!=names|{'MANIFEST.csv'}:raise ValueError('Unexpected build payload')
  source=json.loads((root/'SOURCE84.json').read_text())
- if source['schema']!='PAYPROOF_CURRENT_LOCAL_MODEL_SOURCE105' or source['local_learned_model_included'] is not True or source['local_model_default_enabled'] is not False or source['external_AI_integration'] is not False or source['actual_PayPal_integration_qualified'] is not False or source['contest_ready'] is not False:raise ValueError('Fixture build classification')
+ if source['schema']!='PAYPROOF_PRIVATE_REVIEWER_SOURCE121' or source['local_learned_model_included'] is not True or source['local_model_default_enabled'] is not False or source['external_AI_integration'] is not False or source['package_live_paypal_enabled'] is not False or source['private_reviewer_candidate'] is not True or source['submitted'] is not False or source['contest_ready'] is not False:raise ValueError('Fixture build classification')
  return {'members':len(actual),'manifest_rows':len(rows),'source_commit':source['source_commit'],'source_tree':source['source_tree'],'metadata_is_not_authority':True}
 
 def main():
