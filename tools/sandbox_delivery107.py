@@ -486,6 +486,241 @@ def workflow_envelope109(raw):
     if len(canonical(raw).encode())>16384:raise InvalidData('WORKFLOW_ADMISSION_BOUNDS109')
     return configuration107(raw['configuration']),raw['admission']
 
+
+
+# Prospective separate create profile. Public JSON is consistency data; the
+# reviewed Owner-controlled provider process is trusted, not vendor-attested.
+from payproof.admission import (FixtureLaunch111,FixtureSession111,
+    _FIXTURE_OWNER111,_FIXTURE_SYNTHETIC111)
+FIXTURE_ID111='PAYPROOF_SANDBOX_FIXTURE111_V1'
+SOURCE_PATHS111=SOURCE_PATHS107+('tests/test_sandbox_fixture111.py',
+    'docs/sandbox_fixture111.md','workflow_candidates/payproof-sandbox-fixture111.yml.disabled')
+_FIXED111={'schema':'PAYPROOF_OWNER_SANDBOX_FIXTURE111','profile':'GITHUB_OWNER_FIXTURE111',
+    'repository':'Elinfiny/PayProof','repository_id':'1419908202','owner_id':'273768139',
+    'actor_id':'273768139','ref':'refs/heads/main','event':'workflow_dispatch','attempt':'1',
+    'job_slug':'sandbox_fixture','workflow_path':'.github/workflows/payproof-sandbox-fixture111.yml',
+    'fixture_identity':FIXTURE_ID111,'amount':'1.00','currency':'USD','cash_usd':'0.00',
+    'origin':'https://api-m.sandbox.paypal.com','operation':'orders:create'}
+_KEYS111=set(_FIXED111)|{'source_commit','source_tree','source_sha256','workflow_sha256',
+    'client_id_sha256','stable_effect_key','intent_version','consumed_version','intent_sha256',
+    'consumed_sha256','not_before','expires_at','call_budget','operator_allocation','credential_provenance'}
+
+def source_digest111():
+    return hashlib.sha256(canonical([(p,hashlib.sha256((ROOT107/p).read_bytes()).hexdigest())
+        for p in SOURCE_PATHS111]).encode()).hexdigest()
+
+def fixture_key111(client_fingerprint):
+    return hashlib.sha256(canonical(['PayProof','sandbox','orders:create',client_fingerprint,FIXTURE_ID111]).encode()).hexdigest()
+
+def _actual_fixture111():
+    actual=_provider_process_context109()
+    actual['source_sha256']=source_digest111()
+    actual['workflow_path']=_FIXED111['workflow_path']
+    actual['workflow_sha256']=hashlib.sha256((ROOT107/actual['workflow_path']).read_bytes()).hexdigest()
+    return actual
+
+def _validate_fixture111(record,actual,now):
+    import re
+    if type(record) is not dict or set(record)!=_KEYS111 or len(canonical(record).encode())>8192:
+        raise InvalidData('FIXTURE_SHAPE111')
+    integers={'intent_version','consumed_version','call_budget'}
+    if any(type(record[k]) is not str or not 0<len(record[k])<=256 for k in _KEYS111-integers):
+        raise InvalidData('FIXTURE_BOUNDS111')
+    if any(type(record[k]) is not int for k in integers):raise InvalidData('FIXTURE_BOUNDS111')
+    if any(record[k]!=v for k,v in _FIXED111.items()):raise InvalidData('FIXTURE_FIXED_SCOPE111')
+    if not 0<=record['intent_version']<10**9 or record['consumed_version']!=record['intent_version']+1 or record['call_budget']!=4:
+        raise InvalidData('FIXTURE_EXTERNAL_CONSUMED_REFERENCE111')
+    for k in ('source_sha256','workflow_sha256','client_id_sha256','stable_effect_key','intent_sha256','consumed_sha256'):
+        if not re.fullmatch('[a-f0-9]{64}',record[k]):raise InvalidData('FIXTURE_HASH111')
+    for k in ('source_commit','source_tree'):
+        if not re.fullmatch('[a-f0-9]{40}',record[k]):raise InvalidData('FIXTURE_SOURCE111')
+    expected_keys=set(_WORKFLOW_FIXED109)|{'run_id','github_sha','workflow_ref','workflow_source_sha','source_commit','source_tree','source_sha256','workflow_sha256'}
+    if type(actual) is not dict or set(actual)!=expected_keys or any(type(v) is not str or not 0<len(v)<=256 for v in actual.values()):
+        raise InvalidData('FIXTURE_CALLER111')
+    for k in _WORKFLOW_FIXED109:
+        if actual[k]!=record[k]:raise InvalidData('FIXTURE_CALLER111')
+    if not re.fullmatch('[1-9][0-9]{0,19}',actual['run_id']):raise InvalidData('FIXTURE_RUN111')
+    if (actual['workflow_ref']!='Elinfiny/PayProof/'+record['workflow_path']+'@refs/heads/main'
+            or actual['github_sha']!=record['source_commit'] or actual['workflow_source_sha']!=record['source_commit']):
+        raise InvalidData('FIXTURE_SOURCE111')
+    for k in ('source_commit','source_tree','source_sha256','workflow_sha256'):
+        if actual[k]!=record[k]:raise InvalidData('FIXTURE_SOURCE111')
+    if source_digest111()!=record['source_sha256'] or fixture_key111(record['client_id_sha256'])!=record['stable_effect_key']:
+        raise InvalidData('FIXTURE_SOURCE_OR_KEY111')
+    try:
+        before=datetime.fromisoformat(record['not_before']);expires=datetime.fromisoformat(record['expires_at'])
+        if before.tzinfo is None or expires.tzinfo is None or not before<=now<expires or not 0<(expires-before).total_seconds()<=120:raise ValueError()
+    except (ValueError,TypeError):raise InvalidData('FIXTURE_WINDOW111') from None
+    return expires
+
+def preflight_fixture111(record,*,launch=None):
+    if launch is None:
+        actual=_actual_fixture111();_validate_fixture111(record,actual,datetime.now(timezone.utc))
+        return FixtureLaunch111(canonical(record).encode(),canonical(actual).encode(),_FIXTURE_OWNER111)
+    if type(launch) is not FixtureLaunch111:raise InvalidData('FIXTURE_PRIVATE_LAUNCH111')
+    saved,actual=launch.require()
+    if saved!=record:raise InvalidData('FIXTURE_RECORD_MIX111')
+    _validate_fixture111(record,actual,datetime.now(timezone.utc));return launch
+
+def _synthetic_fixture111(record,actual):
+    _validate_fixture111(record,actual,datetime.now(timezone.utc))
+    return FixtureLaunch111(canonical(record).encode(),canonical(actual).encode(),_FIXTURE_SYNTHETIC111)
+
+def open_fixture111(record,*,journal,launch=None,fake_credentials=None,clock=None,monotonic=None):
+    launch=preflight_fixture111(record,launch=launch)
+    if type(journal) is not OnceJournal107:raise InvalidData('FIXTURE_LOCAL_JOURNAL111')
+    if launch.test_only:
+        if not callable(fake_credentials):raise InvalidData('FIXTURE_SYNTHETIC_CREDENTIALS111')
+    elif any(v is not None for v in (fake_credentials,clock,monotonic)):
+        raise InvalidData('FIXTURE_TEST_NATIVE_MIX111')
+    clock=clock or (lambda:datetime.now(timezone.utc));mono=monotonic or time.monotonic
+    _,actual=launch.require();expires=_validate_fixture111(record,actual,clock())
+    deadline=mono()+min(120.0,(expires-clock()).total_seconds())
+    def guard():
+        _validate_fixture111(record,actual,clock())
+        if mono()>=deadline:raise InvalidData('FIXTURE_MONOTONIC_EXPIRED111')
+    guard()
+    # Local supplement only. Sender must independently consume the external
+    # stable claim before dispatch; this public record cannot attest that CAS.
+    journal.reserve(record['stable_effect_key'],{'operation':'orders:create','fixture':FIXTURE_ID111,
+        'source_sha256':record['source_sha256'],'consumed_sha256':record['consumed_sha256']})
+    values=fake_credentials() if launch.test_only else (
+        os.environ.get('PAYPROOF_PAYPAL_SANDBOX_CLIENT_ID'),os.environ.get('PAYPROOF_PAYPAL_SANDBOX_CLIENT_SECRET'))
+    if (type(values) is not tuple or len(values)!=2 or any(type(v) is not str or not 0<len(v)<=4096 or '\n' in v or '\r' in v for v in values)
+            or hashlib.sha256(values[0].encode()).hexdigest()!=record['client_id_sha256']):
+        raise InvalidData('FIXTURE_CUSTODY111')
+    guard();session=FixtureSession111(launch,values[0],values[1],guard);values=None
+    return session
+
+class FixtureProducer111:
+    """Compose unchanged create_order with a separate explicit Owner context.
+
+    Existing SandboxContext and require(operation) are untouched. Adapter returns
+    are already parsed; private capture below is not raw-network retention.
+    """
+    def __init__(self,session,*,fake_transport=None):
+        if type(session) is not FixtureSession111 or session.test_only!=(fake_transport is not None):
+            raise InvalidData('FIXTURE_TRANSPORT_MIX111')
+        session.require('orders:create');self.context=session
+        self.client_id,self.client_secret=session.client_id,session.client_secret
+        self.webhook_id=None;self.mode='SANDBOX_CONTRACT_TEST' if session.test_only else 'PAYPAL_SANDBOX'
+        self._raw_transport=fake_transport;self._phase=0;self.calls=0;self.first_cause=None;self.first_stage=None
+        self._private_returns=[];self._created_id=None;self._create_used=False;self._get_used=False
+        self.capture_count=0;self.last_capture_kind=None;self.late_original_preserved=False
+        self._creation=None
+
+    def _stop(self,code,stage):
+        if self.first_cause is None:self.first_cause,self.first_stage=code,stage
+        raise UnknownResult(self.first_cause)
+
+    def transport(self,method,path,headers,body):
+        if self.first_cause:self._stop(self.first_cause,self.first_stage)
+        expected=[('POST','/v1/oauth2/token'),('POST','/v2/checkout/orders'),
+            ('POST','/v1/oauth2/token'),('GET','/v2/checkout/orders/'+(self._created_id or ''))]
+        if self._phase>=4 or (method,path)!=expected[self._phase] or (self._phase>=2 and not self._created_id):
+            raise InvalidData('FIXTURE_ROUTE111')
+        try:self.context.require('orders:create' if self._phase<2 else 'orders:read')
+        except Exception:self._stop('FIXTURE_DEADLINE_OR_SCOPE111','PRE_REQUEST')
+        index=self._phase;self._phase+=1;self.calls+=1
+        try:self.context.require('orders:create' if index<2 else 'orders:read')
+        except Exception:self._stop('FIXTURE_DEADLINE_OR_SCOPE111','PRE_INVOKE')
+        try:value=self._raw_transport(method,path,headers,body) if self.context.test_only else SandboxPayPal._network(self,method,path,headers,body)
+        except Exception:self._stop('FIXTURE_PROVIDER_UNKNOWN111','INVOKE')
+        # Store the actual parsed object BEFORE serialization/conversion/late guard.
+        kind=('OAUTH','CREATE','OAUTH','GET')[index]
+        self._private_returns.append((kind,value));self.capture_count+=1;self.last_capture_kind=kind
+        try:self.context.require('orders:create' if index<2 else 'orders:read')
+        except Exception:
+            self.late_original_preserved=True;self._stop('FIXTURE_RETURN_LATE_OR_SCOPE111','POST_RETURN')
+        try:
+            if len(json.dumps(value,allow_nan=False).encode())>1024*1024:raise ValueError()
+        except (ValueError,TypeError):self._stop('FIXTURE_INVALID_RESULT111','RETURN_BOUNDS')
+        if index==1:
+            import re
+            if (type(value) is not dict or type(value.get('id')) is not str or not re.fullmatch('[A-Z0-9]{1,36}',value['id'])
+                    or value.get('status') not in ('CREATED','PAYER_ACTION_REQUIRED')):
+                self._stop('FIXTURE_CREATE_UNKNOWN111','CREATE_VALIDATE')
+            self._created_id=value['id']
+            record,_=self.context.launch.require()
+            self._creation={'id':value['id'],'status':value['status'],'amount':'1.00','currency':'USD',
+                'intent':'CAPTURE','application_sha256':record['client_id_sha256'],'origin':BASE,
+                'source_sha256':record['source_sha256'],'stable_effect_key':record['stable_effect_key'],
+                'fixture_identity':FIXTURE_ID111,'transport':'SYNTHETIC111' if self.context.test_only else 'SAME_OWNER_SANDBOX_SESSION111'}
+        return value
+
+    def _token(self):return SandboxPayPal._token(self)
+
+    def request(self,method,path,payload=None,request_id=None):
+        expected_payload={'intent':'CAPTURE','purchase_units':[{'amount':{'value':'1.00','currency_code':'USD'}}]}
+        if method=='POST':
+            if path!='/v2/checkout/orders' or payload!=expected_payload or request_id!=self.request_id:
+                raise InvalidData('FIXTURE_CREATE_SCOPE111')
+        elif method=='GET':
+            if not self._created_id or path!='/v2/checkout/orders/'+self._created_id or payload is not None or request_id is not None:
+                raise InvalidData('FIXTURE_EXACT_GET111')
+        else:raise InvalidData('FIXTURE_METHOD111')
+        return SandboxPayPal.request(self,method,path,payload,request_id)
+
+    @property
+    def request_id(self):
+        record,_=self.context.launch.require();return 'FIX111-'+record['stable_effect_key'][:30].upper()
+
+    def create(self,store):
+        if self._create_used:raise InvalidData('FIXTURE_CREATE_CONSUMED111')
+        self._create_used=True
+        return SandboxPayPal.create_order(self,store,self.request_id,'1.00','USD')
+
+    def get_order(self,order_id):
+        if self._get_used or order_id!=self._created_id:raise InvalidData('FIXTURE_GET_CONSUMED_OR_ID111')
+        self._get_used=True;return SandboxPayPal.get_order(self,order_id)
+
+    def close(self):
+        self.client_id=self.client_secret='';self._raw_transport=None;self._private_returns.clear();self.context.close()
+
+def run_fixture111(record,*,store,journal,launch=None,fake_credentials=None,fake_transport=None,clock=None,monotonic=None):
+    session=reader=None;primary=None;cleanup=[];receipt=None;stage='FIXTURE_PREFLIGHT111';originals=None
+    try:
+        if type(store) is not Store:raise InvalidData('FIXTURE_STORE111')
+        session=open_fixture111(record,journal=journal,launch=launch,fake_credentials=fake_credentials,clock=clock,monotonic=monotonic)
+        reader=FixtureProducer111(session,fake_transport=fake_transport);stage='FIXTURE_CREATE111'
+        created=reader.create(store);stage='FIXTURE_GET111'
+        order=store.reconcile(created['id'],reader.get_order,reader.mode)
+        if order['state'] in ('UNKNOWN','CONFLICT'):raise UnknownResult('FIXTURE_GET_UNQUALIFIED111')
+        lineage=dict(reader._creation,read_id=order['id'],read_amount=order['amount'],read_currency=order['currency'],read_state=order['state'])
+        receipt={'schema':'PAYPROOF_FIXTURE_RECEIPT111','synthetic':session.test_only,'actual_paypal':not session.test_only,
+            'order_id':order['id'],'state':order['state'],'amount':order['amount'],'currency':order['currency'],
+            'lineage':lineage,'lineage_sha256':hashlib.sha256(canonical(lineage).encode()).hexdigest(),
+            'cash_usd':'0.00','can_execute_payments':False,'numeric_job_id':None,'numeric_job_id_status':'POST_RUN_PROVIDER_READBACK',
+            'provider_execution_independently_verified':False}
+    except Exception as exc:
+        primary={'code':reader.first_cause if reader and reader.first_cause else ('FIXTURE_REFUSED111' if isinstance(exc,InvalidData) else 'FIXTURE_UNKNOWN111'),
+            'stage':reader.first_stage if reader and reader.first_stage else stage}
+    finally:
+        if reader:
+            originals={'captured_parsed_returns':reader.capture_count,'last_kind':reader.last_capture_kind,'late_original_preserved_before_refusal':reader.late_original_preserved}
+            try:reader.close()
+            except Exception:cleanup.append('FIXTURE_READER_CLOSE111')
+        elif session:
+            try:session.close()
+            except Exception:cleanup.append('FIXTURE_SESSION_CLOSE111')
+    return {'primary':primary,'cleanup':cleanup,'receipt':receipt,'original_capture':originals,
+        'calls':reader.calls if reader else 0,'lifecycle':{'session_closed':session._closed if session else None,
+        'private_returns_released':not reader._private_returns if reader else None,
+        'credentials_dropped':reader.client_id==reader.client_secret=='' if reader else None}}
+
+def fixture_cli111(args):
+    try:
+        with open(args.envelope,'rb') as stream:raw=stream.read(8193)
+        if len(raw)>8192:raise InvalidData('FIXTURE_ENVELOPE_BOUNDS111')
+        record=_json(raw)
+        if args.command=='fixture-preflight111':
+            preflight_fixture111(record);result={'primary':None,'cleanup':[],'stage':'FIXTURE_PUBLIC_PREFLIGHT111'}
+        else:
+            result=run_fixture111(record,store=Store(args.database),journal=OnceJournal107(args.journal))
+    except Exception:result={'primary':{'code':'FIXTURE_ENTRY_REFUSED111','stage':'ENTRY'},'cleanup':[],'receipt':None}
+    print(json.dumps(result,sort_keys=True));return 0 if result['primary'] is None else 2
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='command')
@@ -501,7 +736,12 @@ def main():
     run = sub.add_parser('operator-managed')
     run.add_argument('--config',required=True);run.add_argument('--database',required=True)
     run.add_argument('--journal',required=True);run.add_argument('--local-ai',action='store_true')
+    for command in ('fixture-preflight111','github-sandbox-fixture111'):
+        cmd=sub.add_parser(command);cmd.add_argument('--envelope',required=True)
+        if command=='github-sandbox-fixture111':
+            cmd.add_argument('--database',required=True);cmd.add_argument('--journal',required=True)
     args = parser.parse_args()
+    if args.command in ('fixture-preflight111','github-sandbox-fixture111'):return fixture_cli111(args)
     if args.command=='fingerprint':print(source_digest107());return 0
     if args.command in ('owner-workflow-preflight109','github-owner-workflow109'):
         try:
