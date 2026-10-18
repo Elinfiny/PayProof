@@ -1,0 +1,15 @@
+{
+  "schema": "PAYPROOF_RECORDED_RUN_REVIEW_V1",
+  "payload_path": "payproof/web/recorded-run117.json",
+  "canonical_encoding": "UTF-8 JSON, sorted keys, compact separators, no newline",
+  "payload_bytes": 1291,
+  "payload_sha256": "ab12ba5da5f4ca98b2646f177b48568458e87b08031723d07bd44c220b25d1c4",
+  "review": "Saved runtime projection accepted by independent Auditor; integrity only, not vendor attestation/current authority/payment verification",
+  "source": "Exact saved public runtime receipt at 2026-10-18T19:36:29.277776Z",
+  "run_url": "https://github.com/Elinfiny/PayProof/actions/runs/39159527253",
+  "job_url": "https://github.com/Elinfiny/PayProof/actions/runs/39159527253/job/117769703589",
+  "financial_verdict": "CONFLICT / no payment verified",
+  "local_model_verdict": "READY / advisory unknown, abstained",
+  "restoration_url": "https://github.com/Elinfiny/PayProof/commit/3c334c820d0daf331b3f27b8b93854ae5f047058",
+  "log_scope": "Retained job log has one additional trailing LF versus native decoded string. This projection uses the identical runtime JSON receipt, not a claim of full log byte equality."
+}
