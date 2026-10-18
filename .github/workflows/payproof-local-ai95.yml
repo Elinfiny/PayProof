@@ -1,4 +1,4 @@
-name: PayProof local model UI95 source only
+name: PayProof focused responsive QA dormant103
 on:
   workflow_dispatch:
     inputs:
@@ -16,7 +16,7 @@ on:
         type: string
 permissions: {}
 concurrency:
-  group: payproof-local-ai-ui95-once
+  group: payproof-responsive103-once
   cancel-in-progress: false
 jobs:
   local-ui:
@@ -42,7 +42,9 @@ jobs:
           assert e['GITHUB_EVENT_NAME']=='workflow_dispatch'
           assert e['GITHUB_RUN_ATTEMPT']=='1' and e['GITHUB_REF']=='refs/heads/main'
           assert re.fullmatch('[a-f0-9]{40}',e['INPUT_HEAD']) and e['GITHUB_SHA']==e['INPUT_HEAD']
-          assert e['INPUT_INVOCATION']=='PAYPROOF-LOCAL-AI-UI95-20261018-ONCE'
+          assert e['INPUT_ADMISSION']=='INACTIVE_ADMISSION_REF_103'
+          assert e['INPUT_INVOCATION']=='INACTIVE_NEW_ONCE_103'
+          assert e['INPUT_INVOCATION']!='PAYPROOF-LOCAL-AI-UI95-20261018-ONCE'
           assert re.fullmatch(r'[A-Za-z0-9_:@./+-]{1,200}',e['INPUT_ADMISSION'])
           # Public strings are bindings only; external review/once journal and
           # any financial grant must precede a separately reviewed activation.
@@ -53,7 +55,7 @@ jobs:
         with:
           ref: ${{ inputs.expected_head }}
           persist-credentials: false
-          fetch-depth: 1
+          fetch-depth: 2
           submodules: false
           lfs: false
       - name: Exact qualified Node without caching
@@ -68,69 +70,86 @@ jobs:
         run: |
           python3 -I -B - <<'PY'
           import os,sys,json,pathlib,hashlib,subprocess,time,datetime,tempfile,selectors,signal,stat,resource,re
-          root=pathlib.Path.cwd();started=time.monotonic();records=[];stage=None;outcome='FAIL'
+          root=pathlib.Path.cwd();started=time.monotonic();records=[];stage=None;outcome='FAIL';first_error=None
           def stamp():return {'utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'monotonic_ns':time.monotonic_ns()}
           def digest(b):return hashlib.sha256(b).hexdigest()
           def blob(b):return hashlib.sha1(b'blob '+str(len(b)).encode()+b'\0'+b).hexdigest()
           def emit(value):print(json.dumps(value,sort_keys=True),flush=True)
           def projection():
-              raw=subprocess.check_output(['git','ls-tree','-rz','HEAD'],timeout=10);rows=[]
-              extras={'qa/local_ai93.cjs','qa/local_ai93.md','.github/workflows/payproof-local-ai95.yml','devpost/local-ai-ci95.md'}
-              seen=set()
+              raw=subprocess.check_output(['git','ls-tree','-rz','HEAD'],timeout=10);rows=[];seen=set()
+              exclusions={'.github/workflows/payproof-local-ai95.yml','qa/responsive102.md'}
               for line in raw.split(b'\0'):
                   if not line:continue
                   meta,name=line.split(b'\t',1);mode,kind,gitsha=meta.decode().split();name=name.decode();p=root/name
                   assert kind=='blob' and mode in ('100644','100755') and not p.is_symlink()
                   data=p.read_bytes();assert blob(data)==gitsha
                   assert bool(p.stat().st_mode&stat.S_IXUSR)==(mode=='100755')
-                  if name in extras:seen.add(name);continue
-                  if name=='AGENTS.md':
-                      assert blob(data[:3146])=='deac10ac9e1e9604957a2df8177f35c590375f32'
-                      assert 0<len(data[3146:])<=2048;gitsha=blob(data[:3146])
+                  if name in exclusions:seen.add(name);continue
                   rows.append({'path':name,'mode':mode,'sha':gitsha})
-              assert seen==extras and len(rows)==77;rows.sort(key=lambda r:r['path'])
-              assert digest(json.dumps(rows,sort_keys=True,separators=(',',':')).encode())=='49f4e4b120d16694a690f74e0a03ec9a2983abe7b41045aac077b565ebb5c748'
-              assert digest((root/'qa/local_ai93.cjs').read_bytes())=='9362aec85b07839c9eed9fa69fa0f67be9845a69e7a6b2a907ca48ba8b770f43'
-              assert digest((root/'qa/local_ai93.md').read_bytes())=='e891b7942556a7c473612dbb72281123823ebb6ffe99d83d2b396ec24359c5e6'
-              return 'ACCEPTED_PRODUCT77_AND_FROZEN_QA_MATCH'
+              assert seen==exclusions and len(rows)==81;rows.sort(key=lambda r:r['path'])
+              assert digest(json.dumps(rows,sort_keys=True,separators=(',',':')).encode())=='99e4c0a38f3ca51c5406f8004f0fef247992085bd329ebd8703ea7e34482c80d'
+              assert digest((root/'qa/responsive102.cjs').read_bytes())=='e5f597f00671c5606ec56d8c66de0542a9934d1d6f0f1b8030a40bd330370cfc'
+              assert digest((root/'payproof/web/style.css').read_bytes())=='42d457e036fd5779786f53312bfc2805d64e3c6d2417ab85006dfdb10df68035'
+              actual_workflow=digest((root/'.github/workflows/payproof-local-ai95.yml').read_bytes())
+              # Whole-workflow SHA/head/orderedparents are separately pinned by
+              # independent admission BEFORE dispatch, never self-embedded or callerJSON.
+              assert re.fullmatch('[a-f0-9]{64}',actual_workflow)
+              parents=subprocess.check_output(['git','show','-s','--format=%P','HEAD'],text=True,timeout=5).strip().split()
+              assert len(parents)==2 and all(re.fullmatch('[a-f0-9]{40}',p) for p in parents)
+              emit({'source_projection_sha256':'99e4c0a38f3ca51c5406f8004f0fef247992085bd329ebd8703ea7e34482c80d','source_rows':81,'excluded':sorted(exclusions),'actual_workflow_sha256':actual_workflow,'actual_head':os.environ['INPUT_HEAD'],'ordered_parents':parents})
+              return 'FOCUSED_SOURCE81_MATCH'
           def disk_bytes():
               return sum(p.stat().st_size for p in stage.rglob('*') if p.is_file() and not p.is_symlink())
           def run(name,args,seconds,cwd,env):
-              assert seconds>5,'No child launch without remaining execution and reap budget'
-              pre=stamp();s=time.monotonic();streams={'stdout':bytearray(),'stderr':bytearray()};sel=selectors.DefaultSelector();proc=None;reason=None
+              assert seconds>5,'No child launch without execution/reap reserve'
+              pre=stamp();s=time.monotonic();deadline=s+seconds;work=deadline-5
+              streams={'stdout':bytearray(),'stderr':bytearray()};counts={'stdout':0,'stderr':0};hashes={k:hashlib.sha256() for k in streams}
+              sel=selectors.DefaultSelector();proc=None;reason=None;eof=set();cleanup_errors=[];code=None
               def limits():resource.setrlimit(resource.RLIMIT_FSIZE,(512*1024*1024,512*1024*1024))
+              def kill():
+                  try:os.killpg(proc.pid,signal.SIGKILL)
+                  except ProcessLookupError:pass
+                  except BaseException as e:cleanup_errors.append(str(e))
               try:
                   proc=subprocess.Popen(args,cwd=cwd,env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,start_new_session=True,preexec_fn=limits)
                   for key,pipe in [('stdout',proc.stdout),('stderr',proc.stderr)]:sel.register(pipe,selectors.EVENT_READ,key)
                   while sel.get_map() or proc.poll() is None:
-                      if not reason and (time.monotonic()-s>=seconds-5 or disk_bytes()>1024**3 or any(len(b)>131072 for b in streams.values())):
-                          reason='TIMEOUT_OR_MONITORED_STAGE_OR_STREAM_LIMIT';os.killpg(proc.pid,signal.SIGKILL)
-                      for key,_ in sel.select(.1):
+                      now=time.monotonic()
+                      if not reason and (now>=work or disk_bytes()>1024**3):reason='TIMEOUT_OR_MONITORED_STAGE_LIMIT';kill()
+                      if now>=deadline:
+                          if reason is None:reason='ABSOLUTE_CHILD_DEADLINE'
+                          kill();break
+                      for key,_ in sel.select(min(.1,max(0,deadline-now))):
                           chunk=os.read(key.fileobj.fileno(),8192)
-                          if chunk:streams[key.data].extend(chunk)
-                          else:sel.unregister(key.fileobj);key.fileobj.close()
-                  code=proc.wait(timeout=5)
+                          if chunk:
+                              k=key.data;counts[k]+=len(chunk);hashes[k].update(chunk);remaining=131072-len(streams[k]);streams[k].extend(chunk[:max(0,remaining)])
+                              if counts[k]>131072 and reason is None:reason='STREAM_LIMIT_ORIGINAL_PREFIX_RETAINED';kill()
+                          else:eof.add(key.data);sel.unregister(key.fileobj);key.fileobj.close()
+                  try:code=proc.wait(timeout=max(.001,deadline-time.monotonic()))
+                  except subprocess.TimeoutExpired:cleanup_errors.append('REAP_UNKNOWN');kill()
               except BaseException as error:
-                  reason=type(error).__name__
-                  if proc is not None and proc.poll() is None:
-                      os.killpg(proc.pid,signal.SIGKILL);proc.wait(timeout=5)
-                  code=proc.returncode if proc is not None else None
-              finally:sel.close()
-              rec={'phase':name,'pre':pre,'post':stamp(),'seconds':time.monotonic()-s,'exit':code,'failure':reason,'EOF_both':proc is not None and all(p.closed for p in [proc.stdout,proc.stderr]),'reaped':proc is not None and proc.poll() is not None}
-              for key,b in streams.items():
-                  rec[key+'_bytes']=len(b);rec[key+'_sha256']=digest(b);(stage/(name+'.'+key+'.raw')).write_bytes(b)
+                  if reason is None:reason=type(error).__name__+':'+str(error)
+                  if proc is not None:kill()
+                  if proc is not None:
+                      try:code=proc.wait(timeout=max(.001,deadline-time.monotonic()))
+                      except subprocess.TimeoutExpired:cleanup_errors.append('REAP_UNKNOWN')
+              finally:
+                  for key in list(sel.get_map().values()):key.fileobj.close()
+                  sel.close()
+              rec={'phase':name,'pre':pre,'post':stamp(),'seconds':time.monotonic()-s,'exit':code,'failure':reason,'cleanup_errors':cleanup_errors,'EOF_both':eof=={'stdout','stderr'},'reaped':proc is not None and proc.poll() is not None}
+              for key,data in streams.items():
+                  rec[key+'_bytes']=counts[key];rec[key+'_sha256']=hashes[key].hexdigest();rec[key+'_retained_bytes']=len(data);rec[key+'_retained_sha256']=digest(data);(stage/(name+'.'+key+'.raw')).write_bytes(data)
               (stage/(name+'.terminal.json')).write_text(json.dumps(rec));records.append(rec)
-              # Originals and terminal are retained and emitted before guards.
               emit({'terminal':rec,'stdout':streams['stdout'].decode('utf8','replace'),'stderr':streams['stderr'].decode('utf8','replace')})
-              assert code==0 and reason is None and rec['EOF_both'] and rec['reaped'],name
+              assert code==0 and reason is None and rec['EOF_both'] and rec['reaped'] and not cleanup_errors,name
               return bytes(streams['stdout'])
           try:
               assert subprocess.check_output(['git','rev-parse','HEAD'],text=True,timeout=10).strip()==os.environ['INPUT_HEAD']
               assert os.uname().machine=='x86_64' and 'VERSION_ID="24.04"' in pathlib.Path('/etc/os-release').read_text()
               assert subprocess.check_output(['node','--version'],text=True,timeout=5).strip()=='v22.23.3'
-              assert projection()=='ACCEPTED_PRODUCT77_AND_FROZEN_QA_MATCH'
+              assert projection()=='FOCUSED_SOURCE81_MATCH'
               lock=root/'qa/package-lock.json';assert digest(lock.read_bytes())=='4c5980b6227cd6d180285ea681b30c271cece60651ce9d7c73f8d3273073832d'
-              stage=pathlib.Path(tempfile.mkdtemp(prefix='payproof-ui95-',dir=os.environ['RUNNER_TEMP']));stage.chmod(0o700)
+              stage=pathlib.Path(tempfile.mkdtemp(prefix='payproof-responsive103-',dir=os.environ['RUNNER_TEMP']));stage.chmod(0o700)
               assert os.statvfs(stage).f_bavail*os.statvfs(stage).f_frsize>2*1024**3
               (stage/'tmp').mkdir(mode=0o700);(stage/'user.npmrc').write_text('');(stage/'global.npmrc').write_text('')
               env={'PATH':os.environ['PATH'],'CI':'true','LANG':'C.UTF-8','TMPDIR':str(stage/'tmp'),'npm_config_cache':str(stage/'npm-cache'),'NPM_CONFIG_USERCONFIG':str(stage/'user.npmrc'),'NPM_CONFIG_GLOBALCONFIG':str(stage/'global.npmrc'),'PLAYWRIGHT_BROWSERS_PATH':str(stage/'browsers'),'PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT':'30000'}
@@ -155,18 +174,20 @@ jobs:
               installer=run('chromium-install',['node','qa/node_modules/playwright/cli.js','install','--no-shell','--no-progress','--no-remove','chromium'],180,root,env)
               attempts=len(re.findall(rb'Downloading .* from ',installer));assert 1<=attempts<=10
               emit({'actual_download_attempt_lines':attempts,'one_CLI_invocation':True,'official_CDN_only_no_override':True})
-              ui_deadline=time.monotonic()+180
               executable=stage/'browsers/chromium-1248/chrome-linux64/chrome';assert executable.is_file() and not executable.is_symlink()
               binary=executable.read_bytes();assert len(binary)==301186376 and digest(binary)=='377a9fc07b495c3b8d0ab8ec1fdfd153641759f9756fea34d8dfce4de82f5025'
-              version=run('binary-version',[str(executable),'--version'],min(10,ui_deadline-time.monotonic()),root,env);assert b'156.0.8078.4' in version
+              version=run('binary-version',[str(executable),'--version'],10,root,env);assert b'156.0.8078.4' in version
               emit({'binary_bytes':len(binary),'binary_sha256':digest(binary),'binary_version':version.decode().strip()})
+              ui_deadline=time.monotonic()+180
               evidence=stage/'new-ui-evidence';assert not evidence.exists()
-              env.update(QA93_CURRENT_ADMISSION_REF=os.environ['INPUT_ADMISSION'],QA93_EXPECTED_TREE='966fc0f91169981246c1bf059c4a8d10f50f4890',QA93_BINARY_SHA256=digest(binary),QA93_EVIDENCE_DIR=str(evidence))
-              raw=run('new-ui93',['node','qa/local_ai93.cjs'],ui_deadline-time.monotonic(),root,env)
+              env.update(QA102_ADMISSION_REF=os.environ['INPUT_ADMISSION'],QA102_EXPECTED_HEAD=os.environ['INPUT_HEAD'],QA102_INVOCATION_ID=os.environ['INPUT_INVOCATION'],QA102_BINARY_SHA256=digest(binary),QA102_EVIDENCE_DIR=str(evidence))
+              raw=run('responsive102',['node','qa/responsive102.cjs'],ui_deadline-time.monotonic(),root,env)
               result=json.loads(raw.splitlines()[-1]);assert result['status']=='PASS' and result['actual_renderer'] is True
-              assert [v['width'] for v in result['viewports']]==[1440,390] and all(v['status']=='PASS' for v in result['viewports'])
-              assert projection()=='ACCEPTED_PRODUCT77_AND_FROZEN_QA_MATCH';assert disk_bytes()<=1024**3
+              assert [v['width'] for v in result['viewports']]==[390,1440] and all(v['status']=='PASS' for v in result['viewports'])
+              assert projection()=='FOCUSED_SOURCE81_MATCH';assert disk_bytes()<=1024**3
               outcome='PASS'
+          except BaseException as error:
+              first_error={'type':type(error).__name__,'message':str(error),'at':stamp()};raise
           finally:
-              emit({'schema':'PAYPROOF_UI95_FUTURE_TERMINAL','status':outcome,'records':records,'elapsed_seconds':time.monotonic()-started,'stage':str(stage) if stage else None,'stage_bytes':disk_bytes() if stage else 0,'aggregate_stage_cap':'MONITORED_1GiB_NOT_ATOMIC_QUOTA','ephemeral_cleanup':'Provider runner retirement; child groups killed/reaped by enclosing wrapper on timeout; no artifact upload/cache','native_paypal_qualified':False,'financial_authority':False})
+              emit({'schema':'PAYPROOF_RESPONSIVE103_FUTURE_TERMINAL','status':outcome,'first_error':first_error,'records':records,'elapsed_seconds':time.monotonic()-started,'stage':str(stage) if stage else None,'stage_bytes':disk_bytes() if stage else 0,'aggregate_stage_cap':'MONITORED_1GiB_NOT_ATOMIC_QUOTA','ephemeral_cleanup':'Provider runner retirement; child groups killed/reaped by enclosing wrapper on timeout; no artifact upload/cache','native_paypal_qualified':False,'financial_authority':False})
           PY
