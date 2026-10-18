@@ -19,6 +19,7 @@ ALLOWLIST = (
  'payproof/core.py','payproof/fixtures.py','payproof/github_oidc.py',
  'payproof/inactive_integration71.json','payproof/job_policy_source42.py',
  'payproof/paypal.py','payproof/server.py','payproof/service.py',
+ 'payproof/local_ai.py','payproof/local_ai_view.py','payproof/local_ai_training91.json',
  'payproof/web/app.js','payproof/web/index.html','payproof/web/style.css',
  'tools/read_pilot_driver.py','tools/offline_report/export_fixture_report81.py',
  'tools/offline_report/reporter_contract81.json','tools/contest_build84.py',
@@ -99,7 +100,7 @@ def main():
   b=bounded_source(root,name);e=known[name]
   if e['type']!='blob' or e['mode']!='100644' or git_object('blob',b)!=e['sha']:raise ValueError('Source does not match exact Git inventory: '+name)
   payload[name]=b;pins.append({'path':name,'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest(),'git_blob':e['sha']})
- provenance={'schema':'PAYPROOF_CONTEST_SOURCE_BUILD84','base_commit':BASE_COMMIT,'base_tree':BASE_TREE,'source_commit':args.source_commit,'source_tree':args.source_tree,'payload_pins':pins,'fixture_only':True,'actual_PayPal_integration_qualified':False,'actual_AI_integration':False,'contest_ready':False,'dependency':'Fixture source entry is qualified with -I -S; declared cryptography==50.0.2 remains required for native identity modules. No installer or crypto stub is bundled.','meaning':'Source-integrity metadata, never an admission or provider grant.'}
+ provenance={'schema':'PAYPROOF_CURRENT_LOCAL_MODEL_SOURCE105','historical_84_base_commit':BASE_COMMIT,'historical_84_base_tree':BASE_TREE,'source_commit':args.source_commit,'source_tree':args.source_tree,'payload_pins':pins,'fixture_only':True,'actual_PayPal_integration_qualified':False,'local_learned_model_included':True,'local_model_default_enabled':False,'external_AI_integration':False,'contest_ready':False,'dependency':'Fixture source entry is qualified with -I -S; declared cryptography==50.0.2 remains required for native identity modules. No installer or crypto stub is bundled.','meaning':'Source-integrity metadata, never an admission or provider grant.'}
  payload['SOURCE84.json']=(json.dumps(provenance,sort_keys=True,indent=2)+'\n').encode()
  manifest=io.StringIO(newline='');writer=csv.writer(manifest);writer.writerow(['relative_path','size_bytes','sha256'])
  for name,b in sorted(payload.items()):writer.writerow([name,len(b),hashlib.sha256(b).hexdigest()])
@@ -117,6 +118,6 @@ def main():
   if archive.testzip() is not None or len(archive.namelist())!=len(payload):raise RuntimeError('UNKNOWN archive readback')
   for name,b in payload.items():
    if archive.read('PayProof_contest84/'+name)!=b:raise RuntimeError('UNKNOWN body readback')
- print(json.dumps({'status':'BUILD_CREATED','bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest(),'members':len(payload),'source_commit':args.source_commit,'source_tree':args.source_tree,'fixture_only':True,'installer_calls':0,'provider_calls':0}))
+ print(json.dumps({'status':'BUILD_CREATED','bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest(),'members':len(payload),'source_commit':args.source_commit,'source_tree':args.source_tree,'fixture_only':True,'local_learned_model_included':True,'local_model_default_enabled':False,'external_model_calls':0,'installer_calls':0,'provider_calls':0}))
 
 if __name__=='__main__':main()
