@@ -431,6 +431,7 @@ import re as _operator_re107
 class OperatorProfile107(Enum):
     OWNER_MANAGED_SANDBOX = 'OWNER_MANAGED_SANDBOX'
     GITHUB_OWNER_MANAGED_SANDBOX = 'GITHUB_OWNER_MANAGED_SANDBOX'
+    GITHUB_OWNER_WORKFLOW109 = 'GITHUB_OWNER_WORKFLOW109'
     SYNTHETIC_FIXTURE = 'SYNTHETIC_FIXTURE'
 
 _OPERATOR_SEAL107 = object()
@@ -632,3 +633,38 @@ def load_owned_dispatch108():
     # The current surface exposes no such runtime bridge. Public data cannot
     # substitute for it. Implementing/qualifying that bridge requires review.
     raise InvalidData('MISSING_OWN_CAS_FIRST_RUN_JOB_ADAPTER108')
+
+
+# Prospective109 operator-controlled, provider-processed workflow boundary.
+# These tokens are local implementation types, never cross-process attestations.
+_WORKFLOW_OWNER109=object()
+_WORKFLOW_SYNTHETIC109=object()
+
+@dataclass(frozen=True,repr=False)
+class WorkflowLaunch109:
+    _configuration: OperatorConfiguration107=field(repr=False)
+    _admission: bytes=field(repr=False)
+    _actual: bytes=field(repr=False)
+    _seal: object=field(repr=False)
+
+    def __post_init__(self):
+        if self._seal not in (_WORKFLOW_OWNER109,_WORKFLOW_SYNTHETIC109):
+            raise InvalidData('WORKFLOW_PRIVATE_LAUNCH_REQUIRED109')
+        expected=(OperatorProfile107.SYNTHETIC_FIXTURE if self.test_only
+                  else OperatorProfile107.GITHUB_OWNER_WORKFLOW109)
+        if type(self._configuration) is not OperatorConfiguration107 or self._configuration.profile is not expected:
+            raise InvalidData('WORKFLOW_PROFILE_MIX109')
+
+    @property
+    def test_only(self):return self._seal is _WORKFLOW_SYNTHETIC109
+
+    @property
+    def trust_origin(self):
+        return 'SYNTHETIC_WORKFLOW109' if self.test_only else 'GITHUB_OWNER_WORKFLOW109'
+
+    def require(self,configuration):
+        self.__post_init__()
+        if self._configuration is not configuration:raise InvalidData('WORKFLOW_CONFIGURATION_MIX109')
+        return _json(self._admission),_json(self._actual)
+
+    def __reduce_ex__(self,protocol):raise TypeError('Workflow launch is process-private')
