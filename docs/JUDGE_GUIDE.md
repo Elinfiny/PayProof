@@ -2,8 +2,10 @@
 
 ## Requirements
 
-- Linux or macOS with a POSIX shell, private temporary directories, and Python
-  3.11 or newer compiled with the standard-library SQLite module.
+- The qualified environment is Linux with a POSIX shell, private temporary
+  directories, and Python 3.12.14 with the standard-library SQLite module.
+  Metadata declares Python >=3.11; other Python versions and operating systems
+  have not been qualified by these results.
 - A modern desktop browser. The application binds only to 127.0.0.1.
 - A complete checkout of this public repository.
 
@@ -107,8 +109,14 @@ assembly and the final Kokoro narration correction used that same footage.
 These distinct results do not rewrite the failed job as successful. The public
 160-second video and selectable English captions were verified in YouTube.
 
-The independent review also found historical native-admission test harness drift;
-the complete legacy collection is not claimed green. See
+The independent review also found historical native-admission test harness drift.
+The current source addresses the uncovered cases, preserves the original
+failures and separates reused results from newly executed cases. Independent
+review151 accepted the reviewed corrections and their local validation scope;
+it does not establish a current successful real Sandbox capture or authenticated
+webhook. The response binding covers the parsed order JSON, which can include
+provider personal data; its digest does not hash the separate OAuth response
+and is not a guarantee that arbitrary order fields contain no sensitive values. See
 [the scoped audit and known limits](POST_SUBMISSION_AUDIT141.md). No real PayPal
 or external model call, capture, or financial action was repeated by the review.
 

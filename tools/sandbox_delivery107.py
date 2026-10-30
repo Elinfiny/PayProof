@@ -103,6 +103,8 @@ class OperatorOrderReader107:
         self.first_cause = None
         self.first_stage = None
         self._private_returns = []
+        self.projection_diagnostic150 = None
+        self.response_binding150 = None
         self._used = False
 
     def _stop(self, cause, stage='READ'):
@@ -146,7 +148,19 @@ class OperatorOrderReader107:
             raise InvalidData('OPERATOR_REGISTERED_ORDER107')
         if self._used:self._stop(self.first_cause or 'READ_ALREADY_CONSUMED107')
         self._used = True
-        try:return SandboxPayPal.get_order(self,order_id)
+        try:
+            raw = SandboxPayPal.get_order(self,order_id)
+            # Diagnose the same parsed ORDER return before Store suppresses an
+            # InvalidData cause. No OAuth return, headers or raw body is exported.
+            config = self.context._configuration
+            self.projection_diagnostic150 = projection_diagnostic114(raw,
+                {'id':order_id,'amount':config.amount,'currency':config.currency})
+            self.response_binding150 = {
+                'order_id_sha256':hashlib.sha256(order_id.encode()).hexdigest(),
+                'parsed_order_sha256':hashlib.sha256(canonical(raw).encode()).hexdigest(),
+                'commitment_scope':'parsed JSON order only; not original HTTP bytes',
+                'oauth_response_hashed':False}
+            return raw
         except UnknownResult:self._stop(self.first_cause or 'PROVIDER_OUTCOME_UNKNOWN107')
         except InvalidData as exc:self._stop(self.first_cause or sanitized_code108(exc),'VALIDATION')
         except Exception:self._stop(self.first_cause or 'INVALID_PROVIDER_RESULT107','RESULT')
@@ -173,7 +187,9 @@ def reconcile_operator107(store, reader, *, assistance=None):
         'explanation':explain(order),'local_assistance':view['local_assistance'],
         'calls':reader.calls,'first_cause':reader.first_cause,'payment_actions':[],
         'first_stage':reader.first_stage,
-        'actual_paypal':not reader.context.test_only,'contest_ready':False}
+        'actual_paypal':not reader.context.test_only,'contest_ready':False,
+        'diagnostic150':copy.deepcopy(reader.projection_diagnostic150),
+        'response_binding150':copy.deepcopy(reader.response_binding150)}
 
 def run_operator107(configuration=None, *, store=None, journal=None, assistance=None):
     session = None;reader = None;primary = None;cleanup = [];receipt = None

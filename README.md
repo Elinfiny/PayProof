@@ -16,8 +16,9 @@ it is not an eligibility, prize, or production-readiness guarantee.
 
 ## Run the interactive application
 
-Use Linux or macOS with Python 3.11 or newer, its standard-library SQLite, and a
-modern browser. From this repository's root, run:
+The qualified environment is Linux with Python 3.12.14, standard-library SQLite,
+and a modern browser. Package metadata declares Python >=3.11; other Python
+versions, macOS and Windows have not been qualified. From this repository's root, run:
 
 ```sh
 umask 077

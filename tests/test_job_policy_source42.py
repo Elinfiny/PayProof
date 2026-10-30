@@ -129,12 +129,13 @@ def fixture():
 class NewSource42(unittest.TestCase):
     def test01_default_none_and_forged_inputs_before_http(self):
         with self.subTest('default_none'):
-            with self.assertRaisesRegex(p.SourceRefused,'PRE_ADMISSION_INPUTS_UNBOUND'): p.collect_native()
+            with self.assertRaisesRegex(p.SourceRefused,'NATIVE_INPUTS_UNARMED67'): p.collect_native()
             CASES.append('defaultNone_before_HTTP')
         with self.subTest('forged_non_none'):
-            with self.assertRaisesRegex(p.SourceRefused,'NATIVE_SOURCE_FACTORY_UNBOUND'):
+            with self.assertRaisesRegex(p.SourceRefused,'UNTYPED_AUTHORITY_INPUT67'):
                 p.collect_native(admission={},protected_token='PUBLIC_TEST_ONLY',manifest_delivery={},runtime_identity={},registry={})
-            self.assertIsNone(p.NATIVE_SOURCE_FACTORY); self.assertIsNone(p.NATIVE_POLICY_ADAPTER)
+            self.assertIs(p.NATIVE_SOURCE_FACTORY,p.produce_native_source67)
+            self.assertIs(p.NATIVE_POLICY_ADAPTER,p.to_job_policy67)
             CASES.append('caller_JSON_cannot_bind_native_factory')
 
     def test02_originals_drift_and_unknown(self):
