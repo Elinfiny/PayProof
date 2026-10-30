@@ -40,6 +40,7 @@ class FakeHTTPS:
         class Connection:
             def request(self, method, path, body=None, headers=None):
                 self.method, self.path, self.body = method, path, body
+                backend.request_headers = dict(headers or {})
                 backend.calls.append((host, method, path))  # Never retain Authorization.
             def getresponse(self):
                 result = backend.handle(self.method, self.path, self.body)
@@ -120,6 +121,8 @@ class FakeBackend:
         prefix = REPO + '/git/blobs/'
         if method == 'GET' and path.startswith(prefix):
             sha = path.removeprefix(prefix); content = self.blobs[sha]
+            if getattr(self, 'request_headers', {}).get('Accept') == 'application/vnd.github.raw+json':
+                return FakeResponse(200, content)
             return self.reply(200, {'sha':sha, 'encoding':'base64', 'size':len(content),
                                    'content':base64.b64encode(content).decode()})
         raise AssertionError('Unplanned fake endpoint')
@@ -248,9 +251,9 @@ class BootstrapTransportTests(unittest.TestCase):
     def test_06_default_and_missing_auth_source_custody_registry_before_provider(self):
         callback=Mock(side_effect=AssertionError('No provider'))
         for alleged in (None,True,{'admitted':True,'PID':123},{'HMAC':'local'},callback):
-            with self.assertRaisesRegex(IdentityRefused,'UNBOUND'): FixedJWKSLoader(alleged).fetch_production()
+            with self.assertRaisesRegex(IdentityRefused,'UNBOUND'): FixedJWKSLoader(alleged).fetch_production(observed_at=NOW, now=NOW)
             with self.assertRaisesRegex(IdentityRefused,'UNBOUND'): GitRefReservation(alleged).reserve_production()
-            with self.assertRaisesRegex(IdentityRefused,'UNBOUND'): BootstrapBridge(alleged).activate()
+            with self.assertRaisesRegex(IdentityRefused,'UNBOUND'): BootstrapBridge(alleged).activate(self.token)
         callback.assert_not_called()
         key=hashlib.sha256((self.source.grant_id+':'+self.source.order_id_sha256).encode()).hexdigest()
         inputs={'policy':self.policy,'snapshot':self.snapshot,'now':NOW,'source_binding':self.source,

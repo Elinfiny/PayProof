@@ -2,12 +2,12 @@
   "schema": "PAYPROOF_INACTIVE_INSTALLED_SOURCE71",
   "authority": false,
   "native_activation": false,
-  "canonical_base": "ac0b60d4edca291844c7ed65882fb2b19fcfba6a",
+  "canonical_base": "5836d739287f275aeef04fc64f23fbd240d8f878",
   "runtime8": [
     {
       "path": "payproof/admission.py",
-      "bytes": 23775,
-      "sha256": "c735ebebea0ccd9fe77dd0f64fd4fa3ab262ac5b22fb18d88ad1ae78c598c15d"
+      "bytes": 38148,
+      "sha256": "1f0a242e41e862e69dd86ed8882b16ba75f7207f78671efeeb98f1f052c3f4b2"
     },
     {
       "path": "payproof/core.py",
@@ -21,13 +21,13 @@
     },
     {
       "path": "payproof/service.py",
-      "bytes": 4223,
-      "sha256": "c293170e1837705e6b5def5d587ab843425ea7b74c623ce4814e346319ad8fc2"
+      "bytes": 4626,
+      "sha256": "cccd16853afec6c333775860e71780ab029c3b72b6e2ed027de3da8d1e76b7ef"
     },
     {
       "path": "payproof/server.py",
-      "bytes": 11167,
-      "sha256": "f0c2606e87396090ac2814acedb90ff90af71b30aeec96a1caf58ef7bc8ad6ac"
+      "bytes": 11786,
+      "sha256": "ad12ef892df61b9d1f8d61adf1416c6e14d55d5a10cfcf7d30a7ca4dcc175a33"
     },
     {
       "path": "payproof/github_oidc.py",
@@ -36,8 +36,8 @@
     },
     {
       "path": "payproof/bootstrap_bridge.py",
-      "bytes": 53019,
-      "sha256": "63d796f20bb8ece0cde4f50875591393926afcaf08c2c9ddb8e0b81aa1832544"
+      "bytes": 53503,
+      "sha256": "5ccb6c24944b6809dea119abe15a899eed95c8d71a3230106b4293ff3306720e"
     },
     {
       "path": "tools/read_pilot_driver.py",
@@ -45,8 +45,8 @@
       "sha256": "bae443485ccf35ad1bc3f63e81a5cb48aae32e1a9f119e46d508102b55ad1b2f"
     }
   ],
-  "runtime8_sha256": "29f556d1e474265a6d2c9517a0c26ec6823a06fb8173af42c52ae3788fb0e421",
-  "admission5_sha256": "7cc7fd0043658d1a296b0896537299e86335c43375d55bbec65e078e85d8b4c2",
+  "runtime8_sha256": "c716cf855f884a4eacd18907c4315d57d5f387f819512bb883d48fa988390357",
+  "admission5_sha256": "3a71af1b60f3201c43770ef3957624c6c3073280d2a517abf8390faaf61be56c",
   "approved_app": null,
   "default_application": "UNADOPTED",
   "custody": "33HOLD",
@@ -57,5 +57,6 @@
     "bytes": 1519,
     "sha256": "b1a14c7565e8ee100907593c09869a6c21000cb698b540c2d81d72fa2b18c503"
   },
-  "digest_scope": "Runtime8 only; this metadata file excluded to avoid circular selfhash. Hashes are computed from actual integrated bytes, not authorizing identities."
+  "digest_scope": "Runtime8 only; this metadata file excluded to avoid circular selfhash. Hashes are computed from actual integrated bytes, not authorizing identities.",
+  "maintenance144": "Private candidate pins only; no native activation or authority. Original71 metadata retained by Git history."
 }

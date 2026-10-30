@@ -92,7 +92,8 @@ class BootstrapIdentityTests(unittest.TestCase):
             with self.assertRaisesRegex(IdentityRefused, 'UNBOUND'):
                 GitHubOIDCVerifier(alleged, callback).verify_production(self.token(), now=NOW)
             with self.assertRaisesRegex(IdentityRefused, 'UNBOUND'):
-                BootstrapBridge(alleged).activate(self.token(), credentials=callback)
+                BootstrapBridge(alleged).activate(self.token(), job_token=callback,
+                                                   order_id='SYNTHETIC_EXISTING_ORDER')
         callback.assert_not_called()
         with self.assertRaises(IdentityRefused): self.verify(self.token(), snapshot={'url': JWKS_URL, 'admitted': True})
 

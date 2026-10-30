@@ -6,6 +6,7 @@ ATTEMPTS = {'socket': 0, 'subprocess': 0, 'host_file': 0, 'write': 0, 'device': 
 PRIVATE_IO = []; CACHE_PROBES = []; ORIGINALS = []; CASES = []
 STDLIB = pathlib.Path(sysconfig.get_path('stdlib')).resolve()
 SOURCES = {ROOT/'payproof/__init__.py', ROOT/'payproof/job_policy_source42.py',
+           ROOT/'payproof/admission.py', ROOT/'payproof/core.py',
            pathlib.Path(__file__).resolve()}
 CACHES = {pathlib.Path(importlib.util.cache_from_source(str(p))) for p in SOURCES}
 for p in CACHES:
@@ -197,7 +198,7 @@ class NewSource42(unittest.TestCase):
             CASES.append('invalid_clock_original_before_guard')
         with self.subTest('no_native_conversion'):
             made=p.PreparedJobPolicySource(True,'a'*40,'b'*40,'c'*64,'d'*64,())
-            with self.assertRaisesRegex(p.SourceRefused,'AUTHENTIC_SOURCE_FACTORY_AND_POLICY_ADAPTER_UNBOUND'): p.to_native_policy(made)
+            with self.assertRaisesRegex(p.SourceRefused,'TYPED_SOURCE67'): p.to_native_policy(made)
             plan=p.official_backend_plan('a'*40,'b'*40,'123'); self.assertEqual(plan['factory'],'UNBOUND')
             self.assertTrue(all(x['method']=='GET' and x['url'].startswith('https://api.github.com/repos/Elinfiny/PayProof') for x in plan['requests']))
             CASES.append('prepared_or_dataclass_never_native_authority')
@@ -296,10 +297,13 @@ class NewCleanup43(unittest.TestCase):
             CASES.append('43_timely_cleanup_INCOMPLETE_TEST_ONLY')
         with self.subTest('forged_prepared_never_native'):
             forged = p.PreparedJobPolicySource(True, 'e'*40, 'f'*40, '7'*64, '8'*64, ())
-            with self.assertRaisesRegex(p.SourceRefused, 'AUTHENTIC_SOURCE_FACTORY_AND_POLICY_ADAPTER_UNBOUND'): p.to_native_policy(forged)
-            with self.assertRaisesRegex(p.SourceRefused, 'NATIVE_SOURCE_FACTORY_UNBOUND'):
+            with self.assertRaisesRegex(p.SourceRefused, 'TYPED_SOURCE67'): p.to_native_policy(forged)
+            with self.assertRaisesRegex(p.SourceRefused, 'UNTYPED_AUTHORITY_INPUT67'):
                 p.collect_native(admission=forged, protected_token=object(), manifest_delivery=object(), runtime_identity=object(), registry=object())
-            self.assertIsNone(p.NATIVE_SOURCE_FACTORY); self.assertIsNone(p.NATIVE_POLICY_ADAPTER)
+            self.assertIs(p.NATIVE_SOURCE_FACTORY, p.produce_native_source67)
+            self.assertIs(p.NATIVE_POLICY_ADAPTER, p.to_job_policy67)
+            with self.assertRaisesRegex(p.SourceRefused, 'NATIVE_INPUTS_UNARMED67'):
+                p.collect_native()
             self.assertEqual(forged.classification, 'INCOMPLETE')
             CASES.append('43_forged_prepared_no_native_conversion')
 
@@ -315,6 +319,6 @@ if __name__=='__main__':
     signal.alarm(0)
     print(json.dumps({'schema':'NEW_POST_CLEANUP43_INERT_GROUP','status':'PASS' if ok else 'FAIL',
         'methods':result.testsRun,'subcases':len(CASES),'cases':CASES,'real_IO_attempts':ATTEMPTS,
-        'expected_missing_cache_probes':len(CACHE_PROBES),'native_factory':'UNBOUND','native_adapter':'UNBOUND',
+        'expected_missing_cache_probes':len(CACHE_PROBES),'native_factory':'DEFINED_BUT_UNARMED','native_adapter':'TYPED_SOURCE_REQUIRED',
         'TEST_ONLY_positive':'INCOMPLETE_NO_NATIVE_AUTHORITY','old_suites_rerun':False,'private_io_events':len(PRIVATE_IO)},sort_keys=True))
     sys.exit(0 if ok else 1)

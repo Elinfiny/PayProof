@@ -40,6 +40,24 @@ def synthetic_session(cfg, clock, journal, reads):
         credential_reader=credentials,reserve_once=journal.reserve,clock=clock,
         profile=OperatorProfile107.SYNTHETIC_FIXTURE)
 
+def late_unknown_case144(root, cfg, now, reads):
+    results=[]
+    time=[now];session=synthetic_session(cfg,lambda:time[0],OnceJournal107(root/'late.sqlite'),reads)
+    def late(method,path,headers,body):
+        time[0]=now+timedelta(seconds=200)
+        return {'access_token':FAKE_TOKEN}
+    reader=OperatorOrderReader107(session,fake_transport=late);store=Store(root/'late-orders.sqlite');store.register(cfg.order_id,cfg.amount,cfg.currency)
+    try:
+        report=reconcile_operator107(store,reader)
+        first=reader.first_cause;again=refused(lambda:reader.get_order(cfg.order_id))
+        replay=refused(lambda:synthetic_session(cfg,lambda:now,OnceJournal107(root/'late.sqlite'),reads))
+        facts={'receipt':report,'second_read_refused':again,'journal_replay_refused':replay,'first_cause_retained':reader.first_cause==first,'calls':reader.calls}
+        emit('late_unknown_first_cause_no_next_call',facts)
+        assert report['state']=='UNKNOWN' and first=='OPERATOR_WINDOW_OR_ALLOWANCE107' and reader.calls==1 and again and replay and reader.first_cause==first
+        results.append('PASS')
+    finally:reader.close()
+    return results
+
 def group():
     now=datetime.now(timezone.utc);cfg=configuration(now);results=[]
     with tempfile.TemporaryDirectory(prefix='payproof-inert107-') as td:
@@ -82,20 +100,7 @@ def group():
                 results.append('PASS')
             finally:session.close()
 
-            time=[now];session=synthetic_session(cfg,lambda:time[0],OnceJournal107(root/'late.sqlite'),reads)
-            def late(method,path,headers,body):
-                time[0]=now+timedelta(seconds=200)
-                return {'access_token':FAKE_TOKEN}
-            reader=OperatorOrderReader107(session,fake_transport=late);store=Store(root/'late-orders.sqlite');store.register(cfg.order_id,cfg.amount,cfg.currency)
-            try:
-                report=reconcile_operator107(store,reader)
-                first=reader.first_cause;again=refused(lambda:reader.get_order(cfg.order_id))
-                replay=refused(lambda:synthetic_session(cfg,lambda:now,OnceJournal107(root/'late.sqlite'),reads))
-                facts={'receipt':report,'second_read_refused':again,'journal_replay_refused':replay,'first_cause_retained':reader.first_cause==first,'calls':reader.calls}
-                emit('late_unknown_first_cause_no_next_call',facts)
-                assert report['state']=='UNKNOWN' and first=='LATE_OR_SOURCE_CHANGED107' and reader.calls==1 and again and replay and reader.first_cause==first
-                results.append('PASS')
-            finally:reader.close()
+            results.extend(late_unknown_case144(root, cfg, now, reads))
 
             session=synthetic_session(cfg,lambda:now,OnceJournal107(root/'valid.sqlite'),reads);paths=[]
             def valid(method,path,headers,body):
@@ -122,8 +127,13 @@ def group():
 
 if __name__=='__main__':
     primary=None;result=[]
-    try:result=group()
+    try:
+        if '--maintenance144' in sys.argv:
+            now=datetime.now(timezone.utc)
+            with tempfile.TemporaryDirectory(prefix='payproof-late144-') as td:
+                result=late_unknown_case144(Path(td),configuration(now),now,[])
+        else:result=group()
     except Exception as exc:primary=type(exc).__name__  # Never exception payload/credential bytes.
     print(json.dumps({'record':'INERT107_TERMINAL','scenario_results':result,'primary':primary,'cleanup':[],
         'actual_credentials':False,'actual_provider':False,'external_connects':0,'old_suites_replayed':False},sort_keys=True),flush=True)
-    raise SystemExit(0 if primary is None and len(result)==5 else 1)
+    raise SystemExit(0 if primary is None and len(result)==(1 if '--maintenance144' in sys.argv else 5) else 1)

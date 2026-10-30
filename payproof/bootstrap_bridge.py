@@ -414,11 +414,18 @@ class ConsumerProvider:
                 tree=entry['sha']
             elif entry.get('type')!='blob' or entry.get('mode')!='100644':
                 raise IdentityRefused('REGULAR_SOURCE_FILE_REQUIRED')
-        blob=self._json_api('/git/blobs/'+entry['sha'])
-        if blob.get('sha')!=entry['sha'] or blob.get('encoding')!='base64': raise IdentityRefused('BLOB_PROVENANCE')
-        try: raw=base64.b64decode(blob['content'].replace('\n',''),validate=True)
-        except Exception: raise IdentityRefused('BLOB_ENCODING') from None
-        if len(raw)!=blob.get('size') or len(raw)!=entry.get('size') or _sha1_object('blob',raw)!=entry['sha'] or hashlib.sha256(raw).hexdigest()!=digest:
+        # Raw media avoids Base64 expansion without increasing the 65,536-byte
+        # transport bound. The immutable tree still supplies the exact size and
+        # Git identity; SHA-256 remains independently bound to the admission.
+        size=entry.get('size'); blob_sha=entry.get('sha')
+        if (type(size) is not int or not 0<=size<=65536
+                or type(blob_sha) is not str or re.fullmatch('[a-f0-9]{40}',blob_sha) is None):
+            raise IdentityRefused('BOUNDED_IMMUTABLE_SOURCE')
+        self.context.require(production=not self.context.test_only)
+        status,raw=self._wire.exchange('GET','api.github.com',_REPO+'/git/blobs/'+blob_sha,
+            headers={'Accept':'application/vnd.github.raw+json','Authorization':'Bearer '+self._job_token})
+        if status!=200: raise IdentityRefused('CURRENT_PROVIDER_READBACK_REQUIRED')
+        if len(raw)!=size or _sha1_object('blob',raw)!=blob_sha or hashlib.sha256(raw).hexdigest()!=digest:
             raise IdentityRefused('WHOLE_IMMUTABLE_SOURCE_DIGEST')
         return raw
     def reverify(self,order_id,consumed=False):

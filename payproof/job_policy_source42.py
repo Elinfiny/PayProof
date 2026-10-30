@@ -639,6 +639,12 @@ def _collect_bound67(reads, admission, identity, lifetime, *, test_only, now):
 
 
 def produce_native_source67(*, admission=None, job_token=None, oidc_token=None, lifetime=None):
+    # Reject unarmed entry before loading the native identity dependency graph.
+    # This is an earlier refusal only; every original typed gate remains below.
+    if (type(admission) is not ProtectedAdmission67 or admission._seal is not _ADMISSION67
+            or lifetime is None or job_token is None or oidc_token is None
+            or APPROVED_CLIENT_ID_SHA256_67 is None):
+        raise SourceRefused('NATIVE_INPUTS_UNARMED67')
     from .github_oidc import (JobLifetime, NativeIdentityPolicy, SharedJobHTTPS,
                               NativeOIDCVerifier, JWKSSnapshot, _PROVIDER)
     if (type(admission) is not ProtectedAdmission67 or admission._seal is not _ADMISSION67

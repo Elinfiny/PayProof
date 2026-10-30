@@ -185,4 +185,5 @@ class Boundary17Tests(unittest.TestCase):
                             for x in loader._wire._per_call_originals))
         self.assertTrue(any(x.phase == 'CLOSE_RETURN' and x.value is factory.close_result
                             for x in loader._wire._per_call_originals))
-        with self.assertRaises(IdentityRefused): loader.fetch_production()
+        with self.assertRaisesRegex(IdentityRefused, 'UNBOUND'):
+            loader.fetch_production(observed_at=123, now=123)

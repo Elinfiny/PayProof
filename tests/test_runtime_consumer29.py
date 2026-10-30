@@ -1,4 +1,5 @@
-"""Exactly six NEW inert V3 cases. All keys/data are public SYNTHETIC fixtures.
+"""Historical V3 contracts plus three focused raw-blob144 methods.
+All keys/data are public SYNTHETIC fixtures.
 No native host loader, credentials, network, subprocess, CI or production activation.
 """
 import base64,hashlib,hmac,json,pathlib,ssl,sys,time,unittest
@@ -46,6 +47,7 @@ class FakeHTTPS:
         class Connection:
             def request(self, method, path, body=None, headers=None):
                 self.method, self.path, self.body = method, path, body
+                backend.request_headers = dict(headers or {})
                 backend.calls.append((host, method, path))  # Never retain Authorization.
             def getresponse(self):
                 result = backend.handle(self.method, self.path, self.body)
@@ -126,6 +128,8 @@ class FakeBackend:
         prefix = REPO + '/git/blobs/'
         if method == 'GET' and path.startswith(prefix):
             sha = path.removeprefix(prefix); content = self.blobs[sha]
+            if getattr(self, 'request_headers', {}).get('Accept') == 'application/vnd.github.raw+json':
+                return FakeResponse(200, content)
             return self.reply(200, {'sha':sha, 'encoding':'base64', 'size':len(content),
                                    'content':base64.b64encode(content).decode()})
         raise AssertionError('Unplanned fake endpoint')
@@ -377,5 +381,48 @@ class Consumer29Tests(unittest.TestCase):
                 with self.assertRaises(IdentityRefused):p.consume(self.token(),ORDER)
                 self.assertEqual(len(self.b.calls),count);self.assertEqual(p._driver.export()['first_unknown'],first)
                 self.report('08-afterOAuth-'+mode)
+
+    def test_09_raw_source_fits_fixed_bound144(self):
+        raw=(pathlib.Path(admission.__file__).parent/'bootstrap_bridge.py').read_bytes()
+        self.assertGreater(len(base64.b64encode(raw)),65536)
+        self.assertLessEqual(len(raw),65536)
+        actual=self.provider()._blob_at(self.b.source,'payproof/bootstrap_bridge.py',hashlib.sha256(raw).hexdigest())
+        self.assertEqual(actual,raw)
+        self.assertEqual(self.b.request_headers['Accept'],'application/vnd.github.raw+json')
+        self.no_paypal()
+
+    def test_10_raw_source_size_and_digest_fail_closed144(self):
+        for mode in ('tree_size','tampered_body','wrong_digest'):
+            with self.subTest(mode=mode):
+                self.setUp();raw=(pathlib.Path(admission.__file__).parent/'bootstrap_bridge.py').read_bytes()
+                blob=_sha1_object('blob',raw);digest=hashlib.sha256(raw).hexdigest()
+                if mode=='tree_size':
+                    for tree in self.b.trees.values():
+                        for entry in tree['tree']:
+                            if entry['path']=='bootstrap_bridge.py':entry['size']=65537
+                elif mode=='tampered_body':self.b.blobs[blob]=raw[:-1]+bytes([raw[-1]^1])
+                else:digest='0'*64
+                with self.assertRaises(IdentityRefused):
+                    self.provider()._blob_at(self.b.source,'payproof/bootstrap_bridge.py',digest)
+                if mode=='tree_size':self.assertFalse(any('/git/blobs/' in p for h,m,p in self.b.calls))
+                self.no_paypal()
+
+    def test_11_raw_source_status_bounds_no_fallback144(self):
+        for mode in ('redirect','oversized','json_envelope','truncated'):
+            with self.subTest(mode=mode):
+                self.setUp();raw=(pathlib.Path(admission.__file__).parent/'bootstrap_bridge.py').read_bytes()
+                original=self.b.handle
+                def altered(method,path,body):
+                    if method=='GET' and '/git/blobs/' in path:
+                        value={'redirect':(302,raw),'oversized':(200,b'x'*65537),
+                               'json_envelope':(200,_canonical({'content':base64.b64encode(raw).decode()})),
+                               'truncated':(200,raw[:-1])}[mode]
+                        return FakeResponse(*value)
+                    return original(method,path,body)
+                self.b.handle=altered
+                with self.assertRaises(IdentityRefused):
+                    self.provider()._blob_at(self.b.source,'payproof/bootstrap_bridge.py',hashlib.sha256(raw).hexdigest())
+                self.assertEqual(sum('/git/blobs/' in p for h,m,p in self.b.calls),1)
+                self.assertEqual(self.b.closes,len(self.b.calls));self.no_paypal()
 
 if __name__=='__main__':unittest.main(verbosity=2)
