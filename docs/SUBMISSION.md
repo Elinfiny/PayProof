@@ -1,9 +1,11 @@
 # PayProof submission text
 
-Prepared English copy; no entry has been submitted. Field names below follow
-Devpost's standard submission guide and this hackathon's published requirements.
-Hackathon-specific additional questions still require inspection in the actual
-authenticated form. A generic guide is not evidence that those fields were seen.
+The English story below is saved in the existing Devpost entry 1245971,
+submitted on 30 October 2026 and independently observed as Submitted (5/5):
+https://devpost.com/software/payproof-8umpng.
+The actual additional questions, technology and required AI answers, source/build
+links, Owner-supplied participant answers, and final acceptance were saved.
+This source document records delivery; it does not independently certify eligibility.
 
 ## Project name
 
@@ -80,14 +82,14 @@ AI service or optional sponsor tool is claimed.
 
 ## Try it out / testing instructions
 
-Repository: https://github.com/Elinfiny/PayProof — public availability pending.
+Repository: https://github.com/Elinfiny/PayProof — verified public.
 Run instructions: README.md and docs/JUDGE_GUIDE.md in that repository.
 No login, credential, or paid service is required for the interactive synthetic
 and recorded judge walkthrough. Fresh real provider execution additionally
 requires your own Sandbox and separately admitted secure host setup.
 
-Video URL: pending the actual public YouTube upload; no placeholder URL should
-be pasted into the submission. Hosted demo URL: none claimed.
+Public video: https://youtu.be/eG6frmPgfKw (2:40, English, selectable English captions).
+The final narration is Kokoro v1.0 `af_heart`. Hosted demo URL: none claimed.
 
 ## Five judging criteria and existing evidence
 
@@ -97,19 +99,16 @@ be pasted into the submission. Hosted demo URL: none claimed.
 | Design | Interactive evidence states, separate recorded proof, expandable details, and two tested viewport sizes. | These checks do not certify every platform or accessibility requirement. |
 | Potential Impact | Concrete freelancer decision: inspect whether available evidence supports starting work. | No measured customer adoption or financial savings. |
 | Innovation/Idea | Local learned assistance constrained by validated payment evidence and visible abstention. | No claim of market uniqueness. |
-| Presentation | Actual 160-second English application film and reproducible source instructions. | Public upload and final judge access still need verification. |
+| Presentation | Public 160-second English application film, English captions and independently checked source instructions. | Full platform/accessibility coverage and future uptime are not guaranteed. |
 
-## Remaining actual form information
+## Saved form and continuing availability
 
-Devpost's standard flow includes team, project overview, story, technology tags,
-try-it-out links, gallery, video, additional hackathon questions, and final terms.
-The current browser showed “Register for this hackathon” and a login link before
-the actual project form; the authenticated submission fields were not exposed.
-Required custom fields, options, length limits, participant account, team or
-organization representation, age/residence/conflicts, and legal confirmations
-have not been filled or guessed. No team invitation, draft creation, enrollment,
-terms acceptance, or submission has occurred. A thumbnail or gallery asset, if
-required by the actual form, also remains to be selected; none is invented here.
+The existing entry is Submitted (5/5). No second entry or final Submit is needed.
+Its saved build link identifies the submitted source revision; any later reviewed
+source correction must update that link in the same entry while preserving the
+actual submitted state. The repository, video and judge setup must remain freely
+available throughout judging. Optional gallery or contribution fields do not
+replace that requirement.
 
 Published requirements: [hackathon rules](https://paypalaihackathon.devpost.com/rules)
 and [Devpost submission steps](https://help.devpost.com/article/126-know-your-submission-steps).

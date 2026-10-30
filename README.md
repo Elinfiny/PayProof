@@ -5,8 +5,14 @@ It combines PayPal order and capture semantics, visible evidence states, and an
 optional local learned assistant that can abstain. The assistant has no authority
 to authorize, capture, refund, or otherwise move money.
 
-This is the private release candidate. Public source access, a public YouTube
-link, and a completed hackathon entry have not yet been established.
+PayProof was submitted to the PayPal AI Hackathon on 30 October 2026.
+The existing Devpost entry is Submitted (5/5), the source repository is public,
+and the English demonstration is public on YouTube. Submission confirms delivery;
+it is not an eligibility, prize, or production-readiness guarantee.
+
+- [Submitted project](https://devpost.com/software/payproof-8umpng)
+- [Watch the 2:40 demonstration](https://youtu.be/eG6frmPgfKw)
+- [Independent post-submission review and known limits](docs/POST_SUBMISSION_AUDIT141.md)
 
 ## Run the interactive application
 
@@ -57,10 +63,13 @@ capture, authentic webhook delivery, and a current provider session are not
 demonstrated by that record. The recorded panel is an offline historical view;
 its own label and proof details distinguish it from the interactive fixture.
 
-The English demonstration film exists privately and lasts 2:40. It shows actual
-application footage, synthetic scenarios, and the separate recorded result.
-Public video upload is still pending. See the [submission text](docs/SUBMISSION.md),
-[video metadata](docs/YOUTUBE.md), and [contest status](docs/contest.md).
+The [public English demonstration](https://youtu.be/eG6frmPgfKw) lasts 2:40.
+It shows actual application footage, synthetic scenarios, and the separate
+recorded result. Its final narration uses Kokoro v1.0 `af_heart`; the former
+Flite narration is historical and is not the submitted version. English captions
+are published and selectable in the YouTube player. See the
+[submission text](docs/SUBMISSION.md), [video metadata](docs/YOUTUBE.md), and
+[contest status](docs/contest.md).
 
 Source is [MIT licensed](LICENSE). The synthetic training corpus is CC0-1.0.
 See [third-party notices](docs/THIRD_PARTY.md) for the dependency and narration

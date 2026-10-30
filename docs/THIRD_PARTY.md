@@ -10,17 +10,19 @@ from its actual distribution if distributing it. It is not vendored into this
 repository or installed by the source fixture instructions. The build backend
 declares `setuptools>=65`; its lower bound is not a locked release environment.
 
-The private demonstration used an already installed Ubuntu FFmpeg 6.1.1 toolchain
-and Flite's generic English `kal` voice. Audio was synthesized locally; it is not
-a recording or clone of a person. No music was added. FFmpeg and Flite binaries
-are not bundled in the repository or required to run the application.
+The final submitted video uses the original application footage and a locally
+generated Kokoro v1.0 `af_heart` narration track. It is not a human performance or
+a voice clone. No music was added. The upstream
+[Kokoro-82M model card](https://huggingface.co/hexgrad/Kokoro-82M) and
+[af_heart voice](https://huggingface.co/hexgrad/Kokoro-82M/blob/main/voices/af_heart.pt)
+list Apache-2.0. The synthesis engine, ONNX runtime, model and voice weights are
+not bundled in this repository and are not required to run the judge application.
 
-Flite includes Carnegie Mellon University material under a permissive license
-allowing use and redistribution with preservation of applicable notices. The
-production environment's actual Flite copyright notice was inspected during
-private assembly. Preserve those applicable notices with any redistributed
-software or source; this short attribution does not replace their license text.
-Do not imply that Carnegie Mellon University endorses this prototype.
+The earlier private film used Ubuntu FFmpeg 6.1.1 and Flite's generic `kal` voice.
+That former narration was superseded and is not the submitted audio. Preserve
+the historical [Flite notices](licenses/FLITE-NOTICE.txt); no FFmpeg or Flite
+binary is distributed in this repository. These notices do not imply that the
+upstream projects or Carnegie Mellon University endorse PayProof.
 
 PayPal is referenced to describe the Sandbox integration and the competition.
 No ownership of PayPal branding, endorsement, or additional sponsor integration

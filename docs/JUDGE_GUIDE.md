@@ -5,9 +5,9 @@
 - Linux or macOS with a POSIX shell, private temporary directories, and Python
   3.11 or newer compiled with the standard-library SQLite module.
 - A modern desktop browser. The application binds only to 127.0.0.1.
-- A checkout of this repository. Public anonymous access is pending release.
+- A complete checkout of this public repository.
 
-Once public access is approved, the source retrieval command is:
+Retrieve the source with:
 
 ```sh
 git clone https://github.com/Elinfiny/PayProof.git
@@ -51,10 +51,11 @@ at startup only when requested. It does not download weights or use an API key.
 `setuptools>=65` build backend. Cryptography supports native identity modules;
 it is not a prerequisite for the source fixture entry above. The setuptools
 constraint is a lower bound, not a fully pinned deployment environment.
-No package installation was performed for this release preparation. A wheel is
-not the judge entry: the current setuptools package-data list does not enumerate
-all recorded/corpus JSON assets. Use the complete source checkout or the existing
-verified reviewer package instead.
+The source checkout remains the recommended judge entry and requires no package
+installation. The distribution metadata now explicitly includes the recorded
+Sandbox JSON and local training corpus JSON as package data. The post-submission
+review describes the separate wheel-content and isolated source-start checks;
+neither grants a native Sandbox session or installs optional provider authority.
 
 ## Existing reviewer package
 
@@ -93,13 +94,23 @@ as a turnkey public hosted demo.
 
 ## Validation and availability
 
-Existing scoped evidence includes two recorded-panel viewport checks and actual
-captured application footage. The English film is 160 seconds. The original
-media job failed at its audio stage; the same footage was subsequently assembled
-offline with generic narration. That distinct result does not change the failed
-job into a pass. This documentation-only candidate runs no model fit, provider
-call, build, capture, or whole-product suite.
+The public source setup, public video, and Submitted Devpost entry were verified
+after submission on 30 October 2026. An independent offline review started both
+the default source fixture and opt-in local model using Python 3.12.14 with
+third-party site packages disabled. Its 55 checks covered all eight scenarios,
+duplicate events, uncertainty/history, input and route rejection, SQLite
+integrity, recorded-data integrity, model identity, and clean shutdown.
 
-Public source access and a public YouTube URL still need release verification.
-The intended free judge access method is this complete source setup, retained
-through 15 December 2026, 16:00 UTC. No live hosted judge session is promised.
+Historical recorded-panel viewport checks and actual application footage remain
+separate evidence. The original media job failed at its audio stage; later
+assembly and the final Kokoro narration correction used that same footage.
+These distinct results do not rewrite the failed job as successful. The public
+160-second video and selectable English captions were verified in YouTube.
+
+The independent review also found historical native-admission test harness drift;
+the complete legacy collection is not claimed green. See
+[the scoped audit and known limits](POST_SUBMISSION_AUDIT141.md). No real PayPal
+or external model call, capture, or financial action was repeated by the review.
+
+The free judge access method is the complete source setup, retained through
+15 December 2026, 16:00 UTC. No live hosted judge session is promised.

@@ -1,34 +1,34 @@
-# Contest release preparation — 19 October 2026
+# Submitted project status — 30 October 2026
 
-PayProof remains a private candidate. A real 160-second English application film
-exists privately; public source access, public YouTube upload, eligibility/terms,
-and actual entry submission have not been completed.
+PayProof is **Submitted (5/5)** in the existing Devpost entry 1245971:
+https://devpost.com/software/payproof-8umpng.
+The canonical source repository is public at https://github.com/Elinfiny/PayProof,
+with the unchanged MIT license. The final English demonstration is public at
+https://youtu.be/eG6frmPgfKw (160 seconds), with published selectable English
+captions and Kokoro v1.0 `af_heart` narration.
 
 Official [rules](https://paypalaihackathon.devpost.com/rules) and
-[FAQ](https://paypalaihackathon.devpost.com/details/faqs) were reviewed during
-release preparation. Submission deadline: 12 November 2026, 20:00 UTC
-(12:00 PST / 22:00 Europe/Bucharest). Free judge access is required through the
-end of judging on 15 December 2026, 16:00 UTC (08:00 PST / 18:00 Bucharest).
-Recheck the current official form and conditions before a binding submission.
+[schedule](https://paypalaihackathon.devpost.com/details/dates) were checked on
+30 October 2026. Submission closes on 12 November 2026, 20:00 UTC
+(12:00 PST / 22:00 Europe/Bucharest). Free judge access must remain available
+through the end of judging on 15 December 2026, 16:00 UTC.
 
-| Requirement | Current concrete material / remaining step |
+| Requirement | Actual submitted evidence and limit |
 | --- | --- |
-| Functioning application using PayPal centrally and a chosen AI tool/model | Read-only service source, local learned model, interactive synthetic workflow, and historical real Sandbox read with model READY and abstention. Independent scoped review permits release preparation; it is not a final eligibility or jury decision. |
-| Working judge access | Complete source fixture and opt-in local-AI instructions in README and JUDGE_GUIDE. Public anonymous source access still needs verification. Hosting is optional; no hosted session is claimed. |
-| Public open-source repository | Existing canonical repository and unchanged MIT license. It remains private pending exposure review and separate publication authority. |
-| English demonstration on public YouTube, below three minutes | Actual private 2:40 film; prepared title and description in YOUTUBE.md. Actual upload, public visibility, and accessible link remain pending. |
-| Project explanation and tools | Actual English freelancer-focused story, technology list, and five-criterion evidence mapping in SUBMISSION.md. |
-| Eligibility, rights, terms, final form | Personal facts, any representation authority, actual custom questions and legal acceptance remain unconfirmed. No submission has been made. |
+| PayPal integration and a chosen AI model | Read-only PayPal service source, local learned model and synthetic corpus, interactive fixture, and historical real Sandbox read. The historical result is CONFLICT, model READY, advisory priority unknown; no payment is verified. |
+| Functional judge access | Complete source checkout and credential-free fixture/model instructions in README and JUDGE_GUIDE; independently started and checked offline. Hosting is optional under the published rules. |
+| Public open-source code | Public canonical GitHub repository with MIT license; final exact-source pins are retained in the submission/audit receipts. |
+| Public English video under three minutes | Actual public 2:40 YouTube demonstration and English captions, linked in the same Devpost entry. |
+| Explanation and tools | English story, seven technology tags, source/build links and required technology/AI answers are saved. |
+| Actual form and final delivery | Individual/solo entry and Owner-supplied answers saved; final legal acceptance and one final Submit completed; native Submitted 5/5 verified. |
 
-The rules require a meaningful PayPal and AI implementation, not a particular
-external AI vendor. The retained review found no universal requirement for a
-successful paid capture or authentic webhook. Those remain unproved capabilities;
-they are not invented prerequisites for release preparation. A limited real
-CONFLICT result is not settlement, a positive model prediction, or proof of a
-complete paid lifecycle. The exact inner conflict cause was not retained.
+Submitted is a delivery status, not a decision on legal eligibility or a prize.
+The organizer retains that decision. Successful paid capture, authentic webhook
+delivery, fresh native host admission and a production lifecycle remain unproved.
+They are not presented as accomplishments. The exact historical conflict cause
+was not retained and is not guessed.
 
-The film depicts the application operating locally with explicit synthetic and
-recorded labels. Public release review must consider the entire existing
-repository, reachable history, and associated surfaces. Updating a current README
-does not sanitize history or certify old logs. No original unknown/failed result
-is rewritten, and no historical operation is re-executed by these documents.
+The [independent post-submission audit](POST_SUBMISSION_AUDIT141.md) records current
+functional checks and historical native-test limitations. Old private-production
+documents, failed workflow results and consumed/uncertain operations remain
+historical evidence; this status update does not reactivate or replay them.

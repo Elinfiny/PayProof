@@ -1,3 +1,17 @@
+# Current submitted release — 30 October 2026
+
+Owner-authorized PayProof139 finalized the SAME entry1245971. Actual native
+Submitted5/5, public canonical source and public video eG6frmPgfKw were verified.
+The private/public-pending statements below are historical scoped instructions,
+not the current release status and not permission to repeat their once-only work.
+Sole operational writer is Master V60; independent Auditor remains read-only.
+The new reviewed correction is limited to release documentation, two neutral UI
+labels and inclusion of existing JSON assets in the Python distribution.
+Preserve all financial/admission/backend/model/workflow/QA/corpus bytes, failed
+history and UNKNOWN outcomes. Do not replay PUBLIC126, prior PayPal calls,
+captures, workflow jobs, uploads or final Submit. No new provider session or
+protected activation is granted by a document, successful fixture or package.
+
 # PayProof project boundary
 
 ## CURRENT — private reviewer delivery121, 18 October 2026

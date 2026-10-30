@@ -13,4 +13,4 @@ dependencies = ["cryptography==50.0.2"]
 packages = ["payproof", "tools"]
 
 [tool.setuptools.package-data]
-payproof = ["web/*.html", "web/*.js", "web/*.css", "inactive_integration71.json"]
+payproof = ["web/*.html", "web/*.js", "web/*.css", "web/recorded-run117.json", "local_ai_training91.json", "inactive_integration71.json"]
