@@ -1,0 +1,81 @@
+name: PayProof current UI151 one-shot admission152
+on:
+  workflow_dispatch:
+    inputs:
+      expected_head:
+        type: string
+        required: true
+      admission_ref:
+        type: string
+        required: true
+permissions: {}
+concurrency:
+  group: payproof-current-ui151-once
+  cancel-in-progress: false
+jobs:
+  current-ui:
+    if: ${{ github.event_name == 'workflow_dispatch' && github.run_attempt == 1 }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      QA151_EXPECTED_HEAD: ${{ inputs.expected_head }}
+      QA151_ADMISSION_REF: ${{ inputs.admission_ref }}
+      QA151_INVOCATION_ID: PAYPROOF-CURRENT-UI151-ONCE
+      QA151_BINARY_SHA256: 377a9fc07b495c3b8d0ab8ec1fdfd153641759f9756fea34d8dfce4de82f5025
+    steps:
+      - name: Reject unbound native invocation before checkout or setup
+        env:
+          NATIVE_EVENT: ${{ github.event_name }}
+          NATIVE_OWNER: ${{ github.repository_owner_id }}
+          NATIVE_REPO: ${{ github.repository_id }}
+          NATIVE_ACTOR: ${{ github.actor_id }}
+          NATIVE_ATTEMPT: ${{ github.run_attempt }}
+          NATIVE_REF: ${{ github.ref }}
+          NATIVE_SHA: ${{ github.sha }}
+          NATIVE_RUN_ID: ${{ github.run_id }}
+          NATIVE_WORKFLOW_REF: ${{ github.workflow_ref }}
+        run: |
+          python3 -I -B - <<'PY'
+          import os
+          e=os.environ
+          assert e['NATIVE_EVENT']=='workflow_dispatch'
+          assert e['NATIVE_OWNER']=='273768139' and e['NATIVE_REPO']=='1419908202' and e['NATIVE_ACTOR']=='273768139'
+          assert e['NATIVE_ATTEMPT']=='1' and e['NATIVE_REF']=='refs/heads/main'
+          assert e['NATIVE_SHA']==e['QA151_EXPECTED_HEAD']
+          assert e['NATIVE_RUN_ID'].isdigit()
+          assert e['NATIVE_WORKFLOW_REF']=='Elinfiny/PayProof/.github/workflows/payproof-ui151.yml@refs/heads/main'
+          assert e['QA151_ADMISSION_REF']=='AUDITOR152-UI-ONLY-SOURCE-ACCEPTED'
+          from datetime import datetime,timezone
+          # Reserve enough time for the entire bounded job before the cutoff.
+          assert datetime.now(timezone.utc).timestamp()+600 <= datetime(2026,10,30,19,30,tzinfo=timezone.utc).timestamp()
+          # Authority is Owner approval + exact independent source review +
+          # sole Master's external consumed-before-dispatch CAS and native
+          # repository/actor/caller guards; this public input alone grants none.
+          print('UI152_NATIVE_PREFLIGHT_PASS run='+e['NATIVE_RUN_ID'])
+          PY
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+        with:
+          ref: ${{ inputs.expected_head }}
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
+        with:
+          node-version: '22.23.3'
+          check-latest: false
+          package-manager-cache: false
+      - name: Materialize the previously qualified pinned renderer only after admission
+        working-directory: qa
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/payproof-ui151-browser
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          ./node_modules/.bin/playwright install chromium
+      - name: Single new two-viewport current-HTML qualification
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/payproof-ui151-browser
+          QA151_EVIDENCE_DIR: ${{ runner.temp }}/payproof-ui151-evidence
+        run: node qa/ui151.cjs
+      # No artifact upload/cache; no capture/movie, fitting, PayPal or external AI.
+      # The one new result is in bounded job logs, read by the existing sole Master.
