@@ -43,7 +43,7 @@ class Server153(BoundedHTTP152):
       if len(body)!=size:raise InvalidData('TRUNCATED153')
      else:body=b''
      # Native browser-only private portal: the token is entered by Owner, never URL.
-     if (path in (PRIVATE+'/portal',PRIVATE+'/login',PRIVATE+'/buyer-ack',PRIVATE+'/close') or path.startswith(PRIVATE+'/evidence-')) and 'authorization' not in h:
+     if (path in (PRIVATE+'/portal',PRIVATE+'/login',PRIVATE+'/ready',PRIVATE+'/buyer-ack',PRIVATE+'/close') or path.startswith(PRIVATE+'/evidence-')) and 'authorization' not in h:
       if h.get('host')!=receiver.scope.origin[8:]:raise InvalidData('PORTAL_HOST153')
       if method=='POST' and path==PRIVATE+'/login':
        if h.get('origin')!=receiver.scope.origin:raise InvalidData('PORTAL_ORIGIN153')
@@ -56,6 +56,9 @@ class Server153(BoundedHTTP152):
       try:receiver.cap.authenticate(auth)
       except InvalidData:
        page=('<!doctype html><meta charset="utf-8"><title>PayProof private Sandbox153</title><h1>Private Sandbox153</h1><form method="post" action="'+PRIVATE+'/login"><label>Temporary bridge token <input type="password" name="token" autocomplete="off" required></label><button>Open private session</button></form>').encode();self._response(200,page,{'Content-Type':'text/html; charset=utf-8'});return
+      if method=='GET' and path==PRIVATE+'/ready':
+       auth['host']=h['host']
+       status,raw,extra=receiver.handle('GET',path,list(auth.items()),b'');self._response(status,raw,extra);return
       if method=='POST' and path in (PRIVATE+'/buyer-ack',PRIVATE+'/close'):
        if h.get('origin')!=receiver.scope.origin:raise InvalidData('PORTAL_ORIGIN153')
        if not receiver.run_id:raise InvalidData('BUYER_BEFORE_BOOTSTRAP153')
@@ -68,7 +71,7 @@ class Server153(BoundedHTTP152):
       import html
       link='<a rel="noreferrer noopener" href="'+html.escape(receiver.approval,quote=True)+'">Approve this Sandbox test order</a>' if receiver.approval else '<p>Order not ready. No payment approved.</p>'
       report=html.escape(json.dumps(receiver.report,sort_keys=True)) if receiver.report else 'Pending — not completed'
-      page=('<!doctype html><meta charset="utf-8"><title>PayProof private Sandbox153</title><h1>Private Sandbox153</h1>'+link+''.join('<p><a href="'+PRIVATE+'/evidence-'+op+'">Private original '+op+'</a></p>' for op in ('order_create','capture','final_read','verify','event_read'))+'<form method="post" action="'+PRIVATE+'/buyer-ack"><button>Sandbox approval completed</button></form><pre>'+report+'</pre><form method="post" action="'+PRIVATE+'/close"><button>Close private test session</button></form>').encode();self._response(200,page,{'Content-Type':'text/html; charset=utf-8'});return
+      page=('<!doctype html><meta charset="utf-8"><title>PayProof private Sandbox153</title><h1>Private Sandbox153</h1><p><a href="'+PRIVATE+'/ready">Private readiness</a></p>'+link+''.join('<p><a href="'+PRIVATE+'/evidence-'+op+'">Private original '+op+'</a></p>' for op in ('order_create','capture','final_read','verify','event_read'))+'<form method="post" action="'+PRIVATE+'/buyer-ack"><button>Sandbox approval completed</button></form><pre>'+report+'</pre><form method="post" action="'+PRIVATE+'/close"><button>Close private test session</button></form>').encode();self._response(200,page,{'Content-Type':'text/html; charset=utf-8'});return
      status,raw,extra=receiver.handle(method,path,pairs,body);self._response(status,raw,extra)
     except (InvalidData,ValueError,KeyError):self._response(400,b'{"state":"REFUSED_NO_PROMOTION"}')
     except Exception:self._response(503,b'{"state":"UNKNOWN_NO_RETRY"}')

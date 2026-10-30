@@ -83,8 +83,12 @@ class Receiver153:
   self.counts[name]=1
  def _json(self,value):return canonical(value).encode()
  def _private(self,method,path,h,body):
-  self.cap.authenticate(h);run=self._run(h);self._require()
-  if method=='GET' and path==PRIVATE+'/ready':return 200,self._json(dict(self.scope.public(),bound=self.run_id is not None,webhook_ready=self.webhook_id is not None,order_ready=self.order_id is not None,run_id=self.run_id)),{}
+  self.cap.authenticate(h);self._require()
+  # Authenticated metadata is available before a job exists; it never binds a run.
+  if method=='GET' and path==PRIVATE+'/ready':
+   if 'x-payproof-run' in h:self._run(h)
+   return 200,self._json(dict(self.scope.public(),issued_at=self.scope.issued_at,bound=self.run_id is not None,webhook_ready=self.webhook_id is not None,order_ready=self.order_id is not None,run_id=self.run_id)),{}
+  run=self._run(h)
   if method=='POST' and path==PRIVATE+'/bootstrap':
    p=_json(body)
    if p!={'app_sha256':self.scope.app_sha256,'source':self.scope.source,'run_id':run,'session':self.scope.session,'service_id':self.scope.service_id,'expires_at':self.scope.expires_at}:raise InvalidData('BOOTSTRAP_BINDING153')
