@@ -1,0 +1,73 @@
+{
+  "schema": "PAYPROOF153_RENDER_RESOURCE_SPEC",
+  "state": "PREPARED_NOT_CREATED",
+  "owner_workspace": "tea-dbh5lno473hc738b7b9g",
+  "repository": "https://github.com/Elinfiny/PayProof",
+  "source": "ACTUAL_FINAL_REVIEWED_NATIVE153_COMMIT",
+  "branch": "main",
+  "region": "frankfurt",
+  "runtime": "python",
+  "plan": "free",
+  "rootDir": "",
+  "buildCommand": "python -c 'import os,subprocess,sys; env={k:v for k,v in os.environ.items() if k not in (\"PAYPROOF_BRIDGE_TOKEN\",\"PAYPROOF_PAYPAL_SANDBOX_CLIENT_ID\",\"PAYPROOF_PAYPAL_SANDBOX_CLIENT_SECRET\",\"GITHUB_TOKEN\")}; subprocess.run([sys.executable,\"-m\",\"pip\",\"install\",\"--disable-pip-version-check\",\"--no-cache-dir\",\"--only-binary=:all:\",\"--require-hashes\",\"-r\",\"deploy153/requirements.lock\"],env=env,timeout=480,check=True)'",
+  "startCommand": "python -B -m tools.sandbox_receiver153",
+  "autoDeploy": false,
+  "disk": null,
+  "database": null,
+  "customDomain": null,
+  "TLS": "Native Render-managed HTTPS443 and redirect, backend $PORT not public; actual created URL/service/source/readiness readback required before witness",
+  "env": {
+    "PYTHON_VERSION": "3.12.14",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "PAYPROOF_BRIDGE_CONFIG": "Exact session/source/absolute issued_at/expires_at<=600; origin and service_id bind to actual native assigned metadata, never guessed",
+    "PAYPROOF_BRIDGE_TOKEN": "PROTECTED_NATIVE_ENTRY_ONLY_NO_VALUE_IN_TEMPLATE",
+    "PAYPROOF_PREWARM_ONLY": "1 until source/build/TLS/provider readbacks and buyer route are ready; then0 with protected token and absolute600s config"
+  },
+  "maximum_lifetime": "Receiver capability600seconds absolute, no restart/extension; delete exact newly created service after actual receipt/retention",
+  "limits": {
+    "connections": 512,
+    "workers": 8,
+    "backlog": 8,
+    "read_deadline_seconds": 5,
+    "header_bytes": 16384,
+    "webhook_bytes": 65536,
+    "private_response_bytes": 114688,
+    "event_reads": 24,
+    "buyer_status_reads": 60,
+    "certificate_fetches_per_second": 2,
+    "certificate_response_bytes": 32768,
+    "request_logging": false,
+    "artifact_or_cache_upload": false,
+    "original_reply_bytes": 1048576,
+    "private_original_upload_bytes": 1400000,
+    "private_original_reads_each": 2
+  },
+  "dynamic_readbacks": [
+    "Created resource ID/url/Free/source/autoDeployOff/managed443/PORT",
+    "Protected token metadata only in Render and existing GitHub environment; no value echoed",
+    "Authenticated private ready returns actual service/source/session/absolute expiry",
+    "Actual GitHub run/attempt/source from one reserved dispatch",
+    "Master canonical CAS CONSUMED+fullbyte readback before create-only witness",
+    "Worker verifies witness before PayPal secret step",
+    "Receiver bootstrap/webhook/order private ACK before buyer",
+    "Buyer genuine Sandbox approval before one authoritative approval_read/capture",
+    "Original event retained before ACK, officialverify/freshGET/completed",
+    "Sanitized report retained/readback before exact service and temporary token metadata cleanup"
+  ],
+  "never_delete": [
+    "srv-dbh6hgh42hec73c3g9m0",
+    "existing_paypal_client_id_or_secret",
+    "existing_webhook_subscription"
+  ],
+  "deploys_or_secretwrites_actual153": 0,
+  "healthCheckPath": "/healthz",
+  "health_semantics": "Public empty transport-only health, not private readiness or TLS/source/capture proof",
+  "planned_max_usage": {
+    "hours": 0.5,
+    "build_minutes": 20,
+    "bandwidth_MiB": 80
+  },
+  "bootstrap": "First deploy prewarms without any bridge/PayPal token. Owner-only native token fields and absolute config are provisioned after prewarm; Save and deploy existing build (no rebuild; official mode verified), same source, actual private readiness before dispatch. Payment grant starts only after actual run/CAS/witness; remaining>=300s required, never extended.",
+  "build_budget": "Each pip child<=480seconds, binary wheels only, secret env excluded, max2builds plus overhead<=20plannedpipeline minutes; paid/performance builder forbidden.",
+  "protected_config_deploy_mode": "Save and deploy: official Render docs confirm reuses existing build with newenv. Do NOT choose Save,rebuild,anddeploy for timedtoken provisioning."
+}

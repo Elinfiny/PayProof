@@ -1,0 +1,63 @@
+name: PayProof separate private Sandbox153 INACTIVE
+on:
+  workflow_dispatch:
+    inputs:
+      expected_head:
+        type: string
+        required: true
+      source_admission_reference:
+        type: string
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: payproof-sandbox153-once
+  cancel-in-progress: false
+jobs:
+  sandbox-chain:
+    if: >-
+      ${{ github.actor == 'Elinfiny' && github.actor_id == '273768139' && github.repository_id == '1419908202' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && github.sha == inputs.expected_head && inputs.source_admission_reference == 'PAYPROOF153-EXACT-NATIVE-FINAL-ADMISSION' }}
+    environment: payproof-sandbox-readonly
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20 # setup outside native grant; witness wait120s, grant<=600s
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - name: Native source preflight without PayPal or bridge secrets
+        env:
+          EXPECTED_HEAD: ${{ inputs.expected_head }}
+          ADMISSION: ${{ inputs.source_admission_reference }}
+        run: |
+          test "$GITHUB_SHA" = "$EXPECTED_HEAD"
+          test "$GITHUB_REPOSITORY_ID" = '1419908202'
+          test "$GITHUB_ACTOR_ID" = '273768139'
+          test "$GITHUB_RUN_ATTEMPT" = '1'
+          test "$ADMISSION" = 'PAYPROOF153-EXACT-NATIVE-FINAL-ADMISSION'
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12.14'
+          cache: ''
+      - name: Pinned existing cryptography dependencies outside critical600s
+        run: |
+          python -m venv "$RUNNER_TEMP/payproof153-venv"
+          "$RUNNER_TEMP/payproof153-venv/bin/python" -c 'import subprocess,sys; subprocess.run([sys.executable,"-m","pip","install","--disable-pip-version-check","--no-cache-dir","--only-binary=:all:","--require-hashes","-r","deploy153/requirements.lock"],timeout=480,check=True)' 
+      - name: Await actual Master CAS witness, no PayPal credentials released
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          "$RUNNER_TEMP/payproof153-venv/bin/python" -B -m tools.sandbox_worker153 preflight --root .
+      - name: Exact run-bound private bridge and one Sandbox chain
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PAYPROOF_BRIDGE_TOKEN: ${{ secrets.PAYPROOF_BRIDGE_TOKEN }}
+          PAYPROOF_PAYPAL_SANDBOX_CLIENT_ID: ${{ secrets.PAYPROOF_PAYPAL_SANDBOX_CLIENT_ID }}
+          PAYPROOF_PAYPAL_SANDBOX_CLIENT_SECRET: ${{ secrets.PAYPROOF_PAYPAL_SANDBOX_CLIENT_SECRET }}
+        run: |
+          "$RUNNER_TEMP/payproof153-venv/bin/python" -B -m tools.sandbox_worker153 execute --root .
+      # No logs/artifacts/cache/raw/approvalURL upload; cleanup native resources
+      # remains the sole Master's exact-ID provider operation after receipt.
