@@ -23,10 +23,21 @@ class Server10(BoundedHTTP152):
     def get_request(self):
         conn,peer=super().get_request();self.accepted+=1
         if self.accepted>512 or self.receiver.closed:
+            if self.accepted==513:self.trace163('CONNECTION_LIMIT','OSError')
             conn.close();raise OSError('CONNECTION_BUDGET10')
         return conn,peer
 
-    def handle_error(self,request,client_address): pass
+    def trace163(self,kind,error_type):
+        if not self.receiver.scope.test_only:
+            try:
+                from .netcup_host151 import retain_transport163
+                retain_transport163(kind,min(self.accepted,513),error_type)
+            except Exception:pass # Telemetry cannot loosen or bypass a guard.
+
+    def handle_error(self,request,client_address):
+        import sys
+        error=sys.exception()
+        self.trace163('HANDLER_ERROR',type(error).__name__)
 
     def handler10(self):
         receiver=self.receiver

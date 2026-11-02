@@ -28,6 +28,32 @@ def write_once(p,raw):
  with os.fdopen(fd,'wb') as f:f.write(raw);f.flush();os.fsync(f.fileno())
  require(p.read_bytes()==raw,'ACTUAL_FILE_READBACK151')
 
+def retain_binding163(receiver,kind):
+ """Private recovery identifiers, durable before acknowledging a binding.
+
+ Never include credentials or the approval URL. These records are evidence,
+ not authority to repeat a provider operation or reopen an expired session.
+ """
+ require(kind in ('bootstrap','webhook','order'),'BINDING_KIND163')
+ private(ROOT,True)
+ row={'schema':'PAYPROOF_PRIVATE_BINDING163','kind':kind,
+      'source':receiver.scope.source,'run_id':receiver.run_id,
+      'expires_at':receiver.scope.expires_at,
+      'webhook_id':receiver.webhook_id if kind in ('webhook','order') else None,
+      'order_id':receiver.order_id if kind=='order' else None}
+ write_once(ROOT/('BOUND_'+kind+'163.json'),canonical(row))
+
+def retain_transport163(kind,accepted,error_type):
+ """Bounded metadata only; no exception message, headers, peer or payload."""
+ require(kind in ('CONNECTION_LIMIT','HANDLER_ERROR'),'TRANSPORT_KIND163')
+ require(type(accepted) is int and 0<=accepted<=513,'TRANSPORT_COUNT163')
+ safe=error_type if error_type in ('SSLError','SSLEOFError','TimeoutError','OSError','ValueError') else 'OTHER'
+ private(ROOT,True)
+ # One immutable first observation per kind; later failures never overwrite it.
+ p=ROOT/('TRANSPORT_'+kind+'163.json')
+ try:write_once(p,canonical({'kind':kind,'accepted':accepted,'error_type':safe}))
+ except FileExistsError:pass
+
 def actual_host():
  require(os.getuid()==0 and socket.gethostname()==HOSTNAME,'EXACT_NETCUP_ROOT151')
  require(sha(CERT.read_bytes())==CERT_SHA,'EXACT_EXISTING_TLS151');private(KEY)

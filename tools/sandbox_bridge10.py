@@ -75,6 +75,10 @@ class Receiver153:
  def _once(self,name):
   if self.counts.get(name):raise InvalidData('BRIDGE_ONCE_CONSUMED153')
   self.counts[name]=1
+ def _retain_binding163(self,kind):
+  if not self.scope.test_only:
+   from .netcup_host151 import retain_binding163
+   retain_binding163(self,kind)
  def _json(self,value):return canonical(value).encode()
  def _private(self,method,path,h,body):
   self.cap.authenticate(h);self._require()
@@ -86,7 +90,7 @@ class Receiver153:
   if method=='POST' and path==PRIVATE+'/bootstrap':
    p=_json(body)
    if p!={'app_sha256':self.scope.app_sha256,'source':self.scope.source,'run_id':run,'session':self.scope.session,'service_id':self.scope.service_id,'expires_at':self.scope.expires_at,'target_binding_sha256':self.scope.target_binding_sha256,'runtime_sha256':self.scope.runtime_sha256}:raise InvalidData('BOOTSTRAP_BINDING153')
-   self._once('bootstrap');self.run_id=run;return 201,b'{"state":"BOOTSTRAPPED"}',{}
+   self._once('bootstrap');self.run_id=run;self._retain_binding163('bootstrap');return 201,b'{"state":"BOOTSTRAPPED"}',{}
   if self.run_id!=run:raise InvalidData('BOOTSTRAP_BEFORE_DEPENDENCIES153')
   if method=='POST' and path==PRIVATE+'/webhook':
    p=_json(body)
@@ -94,14 +98,14 @@ class Receiver153:
    hook=ident(p['webhook_id']);self._once('webhook');self.webhook_id=hook
    if self.signature is None:self.signature=LocalSignature152(hook)
    elif self.signature.webhook_id!=hook:raise InvalidData('FAKE_WEBHOOK_BINDING153')
-   return 201,b'{"state":"WEBHOOK_BOUND"}',{}
+   self._retain_binding163('webhook');return 201,b'{"state":"WEBHOOK_BOUND"}',{}
   if method=='POST' and path==PRIVATE+'/order':
    if not self.webhook_id:raise InvalidData('WEBHOOK_BEFORE_ORDER153')
    p=_json(body)
    if set(p)!={'order_id','approval_url'}:raise InvalidData('ORDER_CONFIG153')
    order=ident(p['order_id']);u=urlsplit(p['approval_url'])
    if u.scheme!='https' or u.netloc!='www.sandbox.paypal.com' or u.path!='/checkoutnow' or u.query!='token='+order or u.fragment:raise InvalidData('AUTHENTIC_SANDBOX_APPROVAL153')
-   self._once('order');self.order_id=order;self.approval=p['approval_url'];return 201,b'{"state":"ORDER_BOUND_BEFORE_BUYER"}',{}
+   self._once('order');self.order_id=order;self.approval=p['approval_url'];self._retain_binding163('order');return 201,b'{"state":"ORDER_BOUND_BEFORE_BUYER"}',{}
   if method=='GET' and path==PRIVATE+'/event':
    if not self.order_id:raise InvalidData('ORDER_BEFORE_POLL153')
    self.raw_reads+=1

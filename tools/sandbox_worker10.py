@@ -74,6 +74,10 @@ def run_chain153(engine,bridge,store,*,approval_handoff=None):
   raise
  finally:
   report={'state':state,'event_sha256':event_sha,'order_sha256':digest(engine.order.encode()) if engine.order else None,'capture_sha256':digest(engine.capture_id.encode()) if engine.capture_id else None,'first_unknown':'NATIVE_CHAIN_UNKNOWN153' if engine.first_unknown else 'BRIDGE_UNKNOWN153' if bridge.first_unknown else None,'cleanup':cleanup}
+  # Metadata survives a broken private transport; never export original bodies,
+  # URLs, IDs or credential values into the public workflow log.
+  print(json.dumps({'schema':'PAYPROOF_CHAIN_TERMINAL163','report':report,
+                    'provider_slots':dict(engine.used),'bridge_slots':dict(bridge.counts)},sort_keys=True))
   try:
    if not bridge.first_unknown:
     # Exclude OAuth/subscription replies; never copy any actual credential value.
