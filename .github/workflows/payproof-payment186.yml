@@ -1,0 +1,55 @@
+name: PayProof integrated Sandbox payment 186
+run-name: Payment186 ${{ inputs.owner_request }}
+on:
+  workflow_dispatch:
+    inputs:
+      owner_request:
+        description: Exact new Owner authorization UUID
+        type: string
+        required: true
+      start_epoch:
+        description: Fixed UTC start at most 360 seconds ahead
+        type: string
+        required: true
+permissions:
+  contents: read
+env:
+  PYTHONDONTWRITEBYTECODE: '1'
+concurrency:
+  group: payproof-payment186-once
+  cancel-in-progress: false
+jobs:
+  payment186:
+    if: false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: payproof-sandbox-readonly
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install exact existing dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          python3 -m venv "$RUNNER_TEMP/payment186-python"
+          "$RUNNER_TEMP/payment186-python/bin/python" -m pip install --disable-pip-version-check --no-deps --only-binary=:all: --require-hashes -r payment186/requirements.lock
+          "$RUNNER_TEMP/payment186-python/bin/python" -m pip check
+      - name: Verify actual source and buyer route before PayPal credentials
+        env:
+          PAYMENT186_OWNER_REQUEST: ${{ inputs.owner_request }}
+          PAYMENT186_START_EPOCH: ${{ inputs.start_epoch }}
+        run: '"$RUNNER_TEMP/payment186-python/bin/python" -m payment186.worker preflight'
+      - name: One integrated Sandbox chain
+        env:
+          PAYMENT186_OWNER_REQUEST: ${{ inputs.owner_request }}
+          PAYMENT186_START_EPOCH: ${{ inputs.start_epoch }}
+          PAYPROOF_PAYPAL_SANDBOX_CLIENT_ID: ${{ secrets.PAYPROOF_PAYPAL_SANDBOX_CLIENT_ID }}
+          PAYPROOF_PAYPAL_SANDBOX_CLIENT_SECRET: ${{ secrets.PAYPROOF_PAYPAL_SANDBOX_CLIENT_SECRET }}
+        run: '"$RUNNER_TEMP/payment186-python/bin/python" -m payment186.worker execute'
+      # No public artifact upload: all private originals remain on Netcup.
+      # Absolute native expiry also closes access if GitHub is cancelled/killed.
