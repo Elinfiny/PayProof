@@ -115,3 +115,21 @@ by this candidate. Preserve all prior once-consumed claims, UNKNOWN/FAIL results
 the accepted private160s film and exact dormant workflow. Only the existing
 Auditor reviews the next public-effect scope; no other project or checkpoint
 may be changed.
+
+
+## Owner Netcup–PayProof151 native integration — 2 November 2026
+
+The sole Master V61 continues the exact Owner-confirmed Netcup151 scope, not a
+second execution or replay of old203/204. Only new verified Netcup adapters,
+pinned dependencies and the manual workflow are published. Existing product,
+UI, model/corpus, prior workflows, submission and UNKNOWN outcomes stay intact.
+One main-only payproof-sandbox-readonly job, attempt1, <=10minutes, fakeUSD<=1,
+realUSD0 and no additional cost. New bridge token only in that environment and
+the root-private Netcup932863 runtime; PayPal app secrets remain in GitHub.
+No public JSON, input or flag is authority: actual run/source/caller/target,
+Master external consumed checkpoint and immutable GitHub witness are required
+before credential release. Local slots are not remote CAS. Receiver lifetime
+<=600s, exact direct TLS hostname, no schedule; archive original bytes/signature
+and AI output with complete readback before ephemeral purge. Keep old routes
+and consumed/uncertain operations frozen. Restore this new workflow dormant
+after its single terminal execution; never dispatch or cancel an uncertain run.
