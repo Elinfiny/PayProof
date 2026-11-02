@@ -34,11 +34,23 @@ class Handler152(http.server.BaseHTTPRequestHandler):
  protocol_version='HTTP/1.0'
  def setup(self):
   self.connection=self.request;deadline=time.monotonic()+5
-  if self.server.tls_context is not None:
-   self.connection=self.server.tls_context.wrap_socket(self.connection,server_side=True,do_handshake_on_connect=False)
-   self.connection.settimeout(max(.001,deadline-time.monotonic()));self.connection.do_handshake()
-  self._bounded_raw=DeadlineRaw152(self.connection.makefile('rb',buffering=0),self.connection,deadline)
-  self.rfile=io.BufferedReader(self._bounded_raw,buffer_size=4096);self.wfile=socketserver._SocketWriter(self.connection)
+  try:
+   if self.server.tls_context is not None:
+    self.connection=self.server.tls_context.wrap_socket(self.connection,server_side=True,do_handshake_on_connect=False)
+    self.connection.settimeout(max(.001,deadline-time.monotonic()));self.connection.do_handshake()
+   self._bounded_raw=DeadlineRaw152(self.connection.makefile('rb',buffering=0),self.connection,deadline)
+   self.rfile=io.BufferedReader(self._bounded_raw,buffer_size=4096);self.wfile=socketserver._SocketWriter(self.connection)
+  except BaseException:
+   # BaseRequestHandler does not call finish() when setup() fails. TLS wrapping
+   # detaches the original request socket, so closing that original is not enough.
+   for name in ('rfile','_bounded_raw'):
+    stream=getattr(self,name,None)
+    if stream is not None:stream.close()
+   self.connection.close()
+   raise
+ def finish(self):
+  try:super().finish()
+  finally:self.connection.close()
  def parse_request(self):
   ok=super().parse_request()
   if ok:self._bounded_raw.limit=16384+65536

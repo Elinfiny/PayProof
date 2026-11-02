@@ -23,7 +23,7 @@ class FixedBridgeHTTPS153:
   finally:c.close()
 class BridgeClient153:
  def __init__(self,scope,token,run_id,transport,*,clock=time.time,sleeper=time.sleep):
-  self.cap=Capability153(scope,token,clock);self.scope=scope;self.run_id=str(run_id);self.transport=transport;self.clock=clock;self.sleeper=sleeper;self.counts={};self.first_unknown=None;self.closed=False
+  self.cap=Capability153(scope,token,clock);self.scope=scope;self.run_id=str(run_id);self.transport=transport;self.clock=clock;self.sleeper=sleeper;self.counts={};self.first_unknown=None;self.first_diagnostic=None;self.closed=False
   import re
   if not re.fullmatch('[1-9][0-9]{0,19}',self.run_id):raise InvalidData('RUN153')
   if type(transport) is not (SyntheticBridgeTransport153 if scope.test_only else FixedBridgeHTTPS153):raise InvalidData('TYPED_BRIDGE_TRANSPORT153')
@@ -36,13 +36,28 @@ class BridgeClient153:
   headers={'Authorization':'Bearer '+self.cap._token.decode(),'X-PayProof-Run':self.run_id,'X-PayProof-Session':self.scope.session,'X-PayProof-Source':self.scope.source,'X-PayProof-Service':self.scope.service_id,'Content-Type':'application/json'}
   body=canonical(payload).encode() if payload is not None else b''
   headers['Content-Length']=str(len(body))
+  stage='TRANSPORT';status=None
   try:
    status,raw=self.transport.request(method,PRIVATE+'/'+name,headers,body,min(5,self.scope.expires_at-self.clock()));self.scope.require(self.clock())
+   stage='STATUS'
    if status==204:return None
    if status not in (200,201):raise UnknownResult('PRIVATE_RESPONSE_REFUSAL153')
+   stage='BODY'
    if not isinstance(raw,bytes) or len(raw)>114688:raise UnknownResult('PRIVATE_BODY_BOUND153')
-   return json.loads(raw)
-  except Exception:
+   stage='JSON';value=json.loads(raw)
+   if not isinstance(value,dict):raise ValueError('PRIVATE_OBJECT_REQUIRED164')
+   return value
+  except Exception as error:
+   # Only a fixed category and numeric status survive; never exception text,
+   # URL, headers, body, credential, or untrusted response fields.
+   if isinstance(error,ssl.SSLCertVerificationError):category='TLS_CERTIFICATE'
+   elif isinstance(error,ssl.SSLEOFError):category='TLS_EOF'
+   elif isinstance(error,ssl.SSLError):category='TLS_PROTOCOL'
+   elif isinstance(error,TimeoutError):category='TIMEOUT'
+   elif isinstance(error,http.client.HTTPException):category='HTTP_PROTOCOL'
+   elif isinstance(error,OSError):category='CONNECTION'
+   else:category={'STATUS':'HTTP_STATUS','BODY':'BODY_BOUND','JSON':'JSON_SCHEMA'}.get(stage,'TRANSPORT_OR_SCOPE')
+   self.first_diagnostic={'operation':key,'stage':stage,'category':category,'status':status if type(status) is int and 100<=status<=599 else None}
    self.first_unknown='BRIDGE_UNKNOWN153';raise UnknownResult(self.first_unknown) from None
  def readiness(self):
   r=self._call('ready')
@@ -80,4 +95,4 @@ class BridgeClient153:
  def close_remote(self,custody_ack):
   r=self._call('close','POST',{'custody_ack':custody_ack});self.close();return r
  def close(self):self.closed=True;self.cap.close()
- def export(self):return {'counts':dict(self.counts),'first_unknown':self.first_unknown,'closed':self.closed,'token_or_raw_exported':False}
+ def export(self):return {'counts':dict(self.counts),'first_unknown':self.first_unknown,'first_diagnostic':self.first_diagnostic,'closed':self.closed,'token_or_raw_exported':False}

@@ -77,7 +77,8 @@ def run_chain153(engine,bridge,store,*,approval_handoff=None):
   # Metadata survives a broken private transport; never export original bodies,
   # URLs, IDs or credential values into the public workflow log.
   print(json.dumps({'schema':'PAYPROOF_CHAIN_TERMINAL163','report':report,
-                    'provider_slots':dict(engine.used),'bridge_slots':dict(bridge.counts)},sort_keys=True))
+                    'provider_slots':dict(engine.used),'bridge_slots':dict(bridge.counts),
+                    'bridge_diagnostic':getattr(bridge,'first_diagnostic',None)},sort_keys=True))
   try:
    if not bridge.first_unknown:
     # Exclude OAuth/subscription replies; never copy any actual credential value.
