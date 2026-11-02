@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   sandbox-chain:
-    if: ${{ github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && github.ref == 'refs/heads/main' && inputs.source_admission_reference == 'OWNER_NETCUP_PAYPROOF151_20261102' }}
+    if: ${{ false }} # Sole admitted run41437718344 consumed; no replay
     environment: payproof-sandbox-readonly
     runs-on: ubuntu-24.04
     timeout-minutes: 10 # One admitted job, independent receiver maximum600s
