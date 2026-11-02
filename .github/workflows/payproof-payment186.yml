@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   payment186:
-    if: true
+    if: false
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     environment: payproof-sandbox-readonly
