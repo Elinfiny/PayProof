@@ -23,7 +23,9 @@ class BoundedHTTP152(socketserver.ThreadingMixIn,http.server.HTTPServer):
   conn,peer=super().get_request();conn.settimeout(5) # before TLS/request line/header parser
   return conn,peer
  def process_request(self,request,client_address):
-  if not self.slots.acquire(blocking=False):self.shutdown_request(request);return
+  if not self.slots.acquire(blocking=False):
+   if hasattr(self,'metrics'):self.metrics.add('capacity_refused')
+   self.shutdown_request(request);return
   try:super().process_request(request,client_address)
   except BaseException:self.slots.release();raise
  def process_request_thread(self,request,client_address):
@@ -33,11 +35,14 @@ class BoundedHTTP152(socketserver.ThreadingMixIn,http.server.HTTPServer):
 class Handler152(http.server.BaseHTTPRequestHandler):
  protocol_version='HTTP/1.0'
  def setup(self):
+  if hasattr(self.server,'phase'):self.server.phase.value='tls'
   self.connection=self.request;deadline=time.monotonic()+5
   try:
    if self.server.tls_context is not None:
     self.connection=self.server.tls_context.wrap_socket(self.connection,server_side=True,do_handshake_on_connect=False)
     self.connection.settimeout(max(.001,deadline-time.monotonic()));self.connection.do_handshake()
+   if hasattr(self.server,'metrics'):self.server.metrics.add('tls_established')
+   if hasattr(self.server,'phase'):self.server.phase.value='request'
    self._bounded_raw=DeadlineRaw152(self.connection.makefile('rb',buffering=0),self.connection,deadline)
    self.rfile=io.BufferedReader(self._bounded_raw,buffer_size=4096);self.wfile=socketserver._SocketWriter(self.connection)
   except BaseException:
@@ -53,6 +58,7 @@ class Handler152(http.server.BaseHTTPRequestHandler):
   finally:self.connection.close()
  def parse_request(self):
   ok=super().parse_request()
+  if not ok and hasattr(self.server,'metrics'):self.server.metrics.add('framing_refused')
   if ok:self._bounded_raw.limit=16384+65536
   return ok
  def log_message(self,*args):pass

@@ -6,22 +6,7 @@ from .net import token
 from .chain import Chain151,FixedSandboxNetwork151
 from .native_ports import NativePorts152,ProviderEvidence152
 
-def cleanup(engine,ports):
-    if not engine.created_subscription:return 'PRESERVED_EXISTING'
-    # Dedicated compensation for a subscription known to be created by THIS
-    # run. Payment UNKNOWN stays frozen. Never retry a consumed DELETE.
-    if not engine.webhook_id or 'subscription_delete' in ports.used:return 'UNKNOWN_NO_RETRY'
-    try:
-        source=ports.current_source();now=time.time();require(now<min(engine.token_until,engine.grant.expires_at) and bool(engine.token),'CLEANUP_TIME')
-        path='/v1/notifications/webhooks/'+engine.webhook_id;op='subscription_delete';key=engine.grant.once_prefix+':'+op
-        metadata={'profile':engine.grant.profile,'app_sha256':APP,'source_sha256':source,'caller':ports.current_caller(),'target_sha256':sha(path.encode()),'operation':op,'fake_usd':'1.00','real_usd':'0.00','expires_at':engine.grant.expires_at}
-        receipt=ports.reserve_and_readback(key,metadata);require(ports.matches_receipt(receipt,key,metadata),'CLEANUP_RESERVATION')
-        engine.used[op]=1
-        require(time.time()<min(engine.token_until,engine.grant.expires_at),'CLEANUP_EXPIRED_AFTER_RESERVATION')
-        status,raw=engine.transport.request('DELETE',path,{'Authorization':'Bearer '+engine.token,'Content-Type':'application/json'},None,min(5,engine.grant.expires_at-time.time()))
-        ports.retain_result(op,status,raw,engine.client,engine.secret,engine.token)
-        return 'DELETED_NEW' if 200<=status<300 else 'UNKNOWN_NO_RETRY'
-    except Exception:return 'UNKNOWN_NO_RETRY'
+from .compensation import cleanup,arm
 
 def execute():
     from payproof.core import Store
@@ -36,7 +21,8 @@ def execute():
         ports=NativePorts152(api,g,root);grant,credentials=ports.release()
         engine=Chain151(grant,FixedSandboxNetwork151(grant),ports,source_sha256=ports.current_source(),caller=ports.current_caller())
         engine.credentials(*credentials);credentials=None;engine.oauth();engine.subscription()
-        api.call('webhook',{'webhook_id':engine.webhook_id});engine.bind_evidence(ProviderEvidence152(engine))
+        api.call('webhook',{'webhook_id':engine.webhook_id});arm(engine,ports)
+        engine.bind_evidence(ProviderEvidence152(engine))
         store=Store(root/'evidence.sqlite');url=engine.create_order();store.register(engine.order,'1.00','USD')
         api.call('order',{'order_id':engine.order,'approval_url':url});url=None
         for n in range(60):

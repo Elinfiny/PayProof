@@ -1,14 +1,16 @@
 """One HTTPS receiver; separate OIDC worker and browser-local capability roles."""
-import os,socket,ssl,threading,time,signal,pathlib,json
+import os,socket,ssl,threading,time,signal,pathlib,json,sys
 from .common import *
 from .http_bound import BoundedHTTP152,Handler152
 from .state import State
 from .oidc import verify_oidc
 from .net import https
+from .telemetry import Metrics,error_kind
 
 class Server(BoundedHTTP152):
     def __init__(self,state,context,jwks,address=('0.0.0.0',443)):
         self.state=state;self.jwks=jwks;self.accepted=0;self.errors=0
+        self.metrics=Metrics();self.phase=threading.local()
         require(address==('0.0.0.0',443),'LISTEN_SCOPE')
         super().__init__(address,Handler,tls_context=context)
     def get_request(self):
@@ -16,7 +18,12 @@ class Server(BoundedHTTP152):
         conn,peer=super().get_request();self.accepted+=1
         if self.accepted==512:self.state.stop.set()
         return conn,peer
-    def handle_error(self,request,client_address):self.errors=min(512,self.errors+1)
+    def handle_error(self,request,client_address):
+        self.errors=min(512,self.errors+1)
+        phase=getattr(self.phase,'value','unknown')
+        kind=error_kind(sys.exc_info()[1]);self.metrics.add(phase+'_'+kind)
+        print(json.dumps({'schema':'PAYMENT202_TRANSPORT_ERROR','phase':phase,
+              'kind':kind,'accepted':self.accepted,'errors':self.errors},sort_keys=True),flush=True)
 
 class Handler(Handler152):
     def parse_request(self):
@@ -24,6 +31,7 @@ class Handler(Handler152):
         if ok:self._bounded_raw.limit=16384+1500000
         return ok
     def reply(self,status,body=b'',content='application/json'):
+        self.server.phase.value='response'
         self.send_response(status)
         for k,v in {'Content-Type':content,'Content-Length':str(len(body)),'X-Content-SHA256':sha(body),'Cache-Control':'no-store','Pragma':'no-cache','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Cross-Origin-Opener-Policy':'same-origin','Content-Security-Policy':"default-src 'none'; script-src 'self'; connect-src 'self'; style-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"}.items():self.send_header(k,v)
         self.end_headers();self.wfile.write(body)
@@ -38,29 +46,38 @@ class Handler(Handler152):
             require(h.get('content-type','').split(';')[0]=='application/json' and h.get('content-length','').isdigit(),'BODY_HEADERS')
             size=int(h['content-length']);require(0<size<=1500000,'BODY_BOUND');raw=self.rfile.read(size);require(len(raw)==size,'TRUNCATED')
         if self.command=='GET' and self.path in ('/buyer186','/buyer186.js'):
+            self.server.metrics.add('static')
             s.bounded('static',8);name='buyer.html' if self.path=='/buyer186' else 'buyer.js'
             self.reply(200,(pathlib.Path(__file__).parent/name).read_bytes(),'text/html; charset=utf-8' if name.endswith('html') else 'text/javascript; charset=utf-8');return
         auth=h.get('authorization','');require(auth.startswith('Bearer '),'AUTH') if self.path!='/webhooks/payproof186' else None
         with s.lock:
             s.require()
             if self.path.startswith('/buyer186/'):
+                self.server.phase.value='browser'
                 require(h.get('origin') in (None,'https://'+HOST),'BROWSER_ORIGIN')
                 if self.command=='POST' and self.path=='/buyer186/key':out=s.bind_recipient(obj(raw,2048),auth[7:])
                 elif self.command=='GET' and self.path=='/buyer186/envelope':
                     s.browser_auth(auth[7:])
+                    self.server.metrics.add('buyer_poll_authorized')
                     s.bounded('buyer-poll',60)
                     if s.wire is None:self.reply(204);return
                     s.bounded('buyer-delivery');self.reply(200,s.wire,'application/octet-stream');return
                 elif self.command=='POST' and self.path=='/buyer186/ack':s.browser_auth(auth[7:]);out=s.acknowledge_buyer(obj(raw,2048))
                 else:raise Refused('BUYER_ROUTE')
             elif self.command=='POST' and self.path=='/webhooks/payproof186':
+                self.server.phase.value='webhook';self.server.metrics.add('webhook_received')
                 s.bounded('webhook-attempt',12);out=s.webhook_event(h,raw);self.reply(202,canonical(out));return
             elif self.path.startswith('/worker186/'):
                 verify_oidc(auth[7:],self.server.jwks,s.g,time.time())
                 name=self.path[len('/worker186/'):]
+                self.server.phase.value='worker'
+                self.server.metrics.add('worker_'+(name if name in ('grant','ready','buyer','event','reserve','result','webhook','order','ai','terminal') else 'other'))
                 if self.command=='GET':
                     if name=='grant':s.bounded('grant',2);out=s.g
-                    elif name=='ready':s.bounded('ready',32);out={'recipient_ready':s.browser_ready(),'grant_sha256':sha(canonical(s.g))}
+                    elif name=='ready':
+                        s.bounded('ready',32)
+                        out={'recipient_ready':s.browser_ready(),'grant_sha256':sha(canonical(s.g)),
+                             'transport_ok':self.server.errors<16 and self.server.accepted<128}
                     elif name=='buyer':s.bounded('buyer-status',60);out={'acknowledged':s.buyer_ack}
                     elif name=='event':
                         s.bounded('event-read',24)
@@ -74,7 +91,8 @@ class Handler(Handler152):
             self.reply(200,canonical(out))
     def run_route(self):
         try:self.route()
-        except Exception:
+        except Exception as exc:
+            self.server.metrics.add('route_'+('refused' if isinstance(exc,Refused) else error_kind(exc)))
             # No headers, request body, URL, peer or raw exception is logged.
             try:self.reply(400,b'{"state":"REFUSED_NO_RETRY"}')
             except Exception:pass
@@ -129,7 +147,10 @@ def native():
         try:
             result['closed']=close_access(server,thread)
         finally:
-            try:state.close(reason)
+            try:
+                try:
+                    if server:state.save('TRANSPORT.json',{'accepted':server.accepted,'errors':server.errors,'counts':server.metrics.snapshot(),'peer_data_retained':False})
+                finally:state.close(reason)
             except Exception:result['custody']='UNKNOWN_PRESERVE_FILES'
         result.update(status='COMPLETED' if state.terminal and state.terminal['state']=='COMPLETED' and result['closed'] and 'custody' not in result else 'UNKNOWN',reason=reason,accepted=server.accepted if server else 0,errors=server.errors if server else 0,run_id=g['run_id'])
         write_once(ROOT/'NATIVE_RESULT.json',canonical(result))

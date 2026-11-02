@@ -36,6 +36,14 @@ class State:
         expected={'profile':'PAYPROOF186_DISTINCT_SELFHOSTED_SANDBOX','app_sha256':APP,'source_sha256':engine_source(self.g),'caller':caller(self.g),'target_sha256':m.get('target_sha256'),'operation':op,'fake_usd':'1.00','real_usd':'0.00','expires_at':self.g['expires_at']}
         require(m==expected and re.fullmatch('[a-f0-9]{64}',m['target_sha256']) and row['key']==once_prefix(self.g)+':'+op,'EXACT_SLOT')
         if op=='oauth':require(self.browser_ready(),'BUYER_ROUTE_BEFORE_PAYPAL')
+        if op=='subscription_delete':
+            # Cleanup authority cannot be minted for an existing/unknown hook.
+            require(self.webhook and m['target_sha256']==sha(('/v1/notifications/webhooks/'+self.webhook).encode()),'CLEANUP_TARGET')
+            created=obj((self.root/'HTTP_subscription_create.bin').read_bytes())
+            status=obj((self.root/'HTTP_subscription_create.json').read_bytes())['status']
+            previous=obj((self.root/'HTTP_subscription_read.bin').read_bytes())['webhooks']
+            require(200<=status<300 and created.get('id')==self.webhook and
+                    not any(w.get('id')==self.webhook for w in previous),'CLEANUP_CREATED_THIS_RUN')
         self.bounded('reserve-'+op);self.save('SLOT_'+op+'.json',row)
         return {'state':'CONSUMED','grant_sha256':sha(canonical(self.g)),**row}
     def retain_result(self,row):

@@ -6,7 +6,7 @@ HOST='v2202609412152514007.ultrasrv.de'; HOSTNAME='v2202609412152514007'
 ISSUER='https://token.actions.githubusercontent.com'
 AUDIENCE='urn:payproof:netcup932863:payment186'
 WORKFLOW=REPO+'/.github/workflows/payproof-payment186.yml@refs/heads/main'
-ROOT=pathlib.Path('/root/payproof-payment186-c194')
+ROOT=pathlib.Path('/root/payproof-payment186-c202')
 APP='b954b4c7eff1b9aac313ca9867e2d8fa31fb1782453b0ce583cb2dd1bb436e74'
 OPS=('oauth','subscription_read','subscription_create','order_create','approval_read','capture','final_read','verify','event_read','subscription_delete')
 LIMITS={'session_seconds':600,'job_minutes':10,'accepted_connections':512,'PayPal_calls':10,'certificate_GETs':2,'JWKS_GETs':1,'fake_USD':'1.00','real_USD':'0.00','extra_cost':'0.00','oidc_tokens':2,'browser_recipient_keys':1,'retries':0}
@@ -54,7 +54,7 @@ def proposal(source):
             'one_new_order':True,'one_capture_after_provider_APPROVED':True,
             'payment_operations':list(OPS),'one_job_one_attempt':True,
             'closure':'terminal, failure or absolute expiry; preserve UNKNOWN and original files',
-            'subscription_cleanup':'DELETE once only for known subscription created by this run',
+            'subscription_cleanup':'pre-reserved DELETE once for exact new hook; independent sanitized GitHub receipt survives main-channel loss',
             'browser':'one browser-local temporary capability and ephemeral RSA2048 key; Master binds public pairing SHA once on Netcup; automatic encrypted approval transfer',
             'custody':'existing GitHub Sandbox credentials; Netcup root-private originals; no public artifacts',
             'publication':'exact reviewed additive files and one workflow; disable workflow after dispatch',

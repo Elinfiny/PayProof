@@ -12,7 +12,7 @@ class NativePorts152:
         validate_grant(self.g,time.time(),source_binding());head,run=actual();require((head,run)==(self.g['workflow_sha'],self.g['run_id']),'SOURCE_RUN_DRIFT');return engine_source(self.g)
     def current_caller(self):self.current_source();return caller(self.g)
     def release(self):
-        self.current_source();require(not self.released,'CUSTODY_ONCE');ready=self.api.call('ready');require(ready=={'recipient_ready':True,'grant_sha256':sha(canonical(self.g))},'BUYER_READY_BEFORE_CUSTODY')
+        self.current_source();require(not self.released,'CUSTODY_ONCE');ready=self.api.call('ready');require(ready=={'recipient_ready':True,'grant_sha256':sha(canonical(self.g)),'transport_ok':True},'BUYER_READY_BEFORE_CUSTODY')
         self.released=True
         client=os.environ.pop('PAYPROOF_PAYPAL_SANDBOX_CLIENT_ID','');secret=os.environ.pop('PAYPROOF_PAYPAL_SANDBOX_CLIENT_SECRET','')
         require(client and secret and sha(client.encode())==APP and len(client)<=512 and len(secret)<=512,'EXISTING_APP')

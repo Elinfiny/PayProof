@@ -48,6 +48,12 @@ def preflight():
         g=checked_grant(api)
         for n in range(30):
             ready=api.call('ready');require(ready['grant_sha256']==sha(canonical(g)),'GRANT_READINESS')
+            if ready.get('transport_ok') is not True:
+                # Fail before credentials and before any PayPal effect. This
+                # consumes this attempt; it never rearms or retries anything.
+                api.call('terminal',{'state':'REFUSED','provider_slots':{},'bridge_unknown':False,
+                         'cleanup':'NOT_COMPLETED','order_sha256':None,'capture_sha256':None},terminal=True)
+                raise Refused('TRANSPORT_UNHEALTHY_BEFORE_PAYPAL')
             if ready.get('recipient_ready') is True:break
             require(n<29,'BUYER_ROUTE_UNAVAILABLE');time.sleep(2)
         write_once(root/'PREFLIGHT.json',canonical(g));return 0
