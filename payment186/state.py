@@ -58,7 +58,9 @@ class State:
             if p.is_file():
                 original=obj(p.read_bytes())
                 candidates.extend(original.get('webhooks',[]) if op=='subscription_read' else [original])
-        matches=[w for w in candidates if w.get('id')==row['webhook_id'] and w.get('url')=='https://'+HOST+'/webhooks/payproof186' and {'name':'PAYMENT.CAPTURE.COMPLETED'} in w.get('event_types',[])]
+        # Provider event entries may also carry descriptive metadata. Bind the
+        # exact event name while preserving the original identity and URL checks.
+        matches=[w for w in candidates if type(w) is dict and w.get('id')==row['webhook_id'] and w.get('url')=='https://'+HOST+'/webhooks/payproof186' and type(w.get('event_types')) is list and any(type(e) is dict and e.get('name')=='PAYMENT.CAPTURE.COMPLETED' for e in w['event_types'])]
         require(len(matches)==1,'ORIGINAL_WEBHOOK_BINDING')
         self.bounded('bind-webhook');self.save('BOUND_WEBHOOK.json',row);self.webhook=row['webhook_id']
         if self.signature is None:
@@ -112,6 +114,8 @@ class State:
     def close(self,reason):
         if self.closed:return
         self.closed=True;self.stop.set();self.recipient=None;self.cap_sha=None;self.wire=None;self.signature=None
-        manifest={p.name:{'bytes':p.stat().st_size,'sha256':sha(p.read_bytes())} for p in self.root.iterdir() if p.is_file() and not p.is_symlink() and p.name not in ('CLOSED.json','CUSTODY.json')}
+        # stdout is still open and receives the final result after this method.
+        # NATIVE_RESULT.json and CLOSED.json are separate immutable receipts.
+        manifest={p.name:{'bytes':p.stat().st_size,'sha256':sha(p.read_bytes())} for p in self.root.iterdir() if p.is_file() and not p.is_symlink() and p.name not in ('CLOSED.json','CUSTODY.json','native.out')}
         self.save('CUSTODY.json',{'schema':'PAYMENT186_PRIVATE_CUSTODY','files':manifest})
         self.save('CLOSED.json',{'state':'ACCESS_CLOSED','reason':reason,'at':self.clock(),'provider_cleanup':'See WORKER_TERMINAL; unknown effects never retried','evidence_preserved':True})
