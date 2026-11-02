@@ -6,10 +6,23 @@ from .state import State
 from .oidc import verify_oidc
 from .net import https
 from .telemetry import Metrics,error_kind
+from .ingress213 import IngressGuard
+
+def transport_ready(server):
+    return (server.expected_errors<16 and server.accepted<128
+            and not server.state.stop.is_set())
+
+def configure_ingress(context,server,guard):
+    def exact_sni(sock,name,ctx):
+        expected=name==HOST;server.phase.expected_sni=expected
+        server.metrics.add('sni_expected' if expected else 'sni_rejected')
+        guard.observe(sock.getpeername()[0],expected)
+        if not expected:return ssl.ALERT_DESCRIPTION_UNRECOGNIZED_NAME
+    context.set_servername_callback(exact_sni)
 
 class Server(BoundedHTTP152):
     def __init__(self,state,context,jwks,address=('0.0.0.0',443)):
-        self.state=state;self.jwks=jwks;self.accepted=0;self.errors=0
+        self.state=state;self.jwks=jwks;self.accepted=0;self.errors=0;self.expected_errors=0
         self.metrics=Metrics();self.phase=threading.local()
         require(address==('0.0.0.0',443),'LISTEN_SCOPE')
         super().__init__(address,Handler,tls_context=context)
@@ -20,12 +33,16 @@ class Server(BoundedHTTP152):
         return conn,peer
     def handle_error(self,request,client_address):
         self.errors=min(512,self.errors+1)
+        if getattr(self.phase,'expected_sni',False):self.expected_errors=min(512,self.expected_errors+1)
         phase=getattr(self.phase,'value','unknown')
         kind=error_kind(sys.exc_info()[1]);self.metrics.add(phase+'_'+kind)
         print(json.dumps({'schema':'PAYMENT202_TRANSPORT_ERROR','phase':phase,
               'kind':kind,'accepted':self.accepted,'errors':self.errors},sort_keys=True),flush=True)
 
 class Handler(Handler152):
+    def setup(self):
+        self.server.phase.expected_sni=False
+        super().setup()
     def parse_request(self):
         ok=super().parse_request()
         if ok:self._bounded_raw.limit=16384+1500000
@@ -36,7 +53,7 @@ class Handler(Handler152):
         for k,v in {'Content-Type':content,'Content-Length':str(len(body)),'X-Content-SHA256':sha(body),'Cache-Control':'no-store','Pragma':'no-cache','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Cross-Origin-Opener-Policy':'same-origin','Content-Security-Policy':"default-src 'none'; script-src 'self'; connect-src 'self'; style-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"}.items():self.send_header(k,v)
         self.end_headers();self.wfile.write(body)
     def route(self):
-        s=self.server.state;s.require()
+        s=self.server.state;s.require();require(not s.stop.is_set(),'STOPPED')
         require(isinstance(self.connection,ssl.SSLSocket),'TLS')
         pairs=list(self.headers.items());h={k.lower():v for k,v in pairs}
         require(len(pairs)==len(h) and len(h)<=32 and sum(len(k)+len(v) for k,v in pairs)<=16384,'HEADERS')
@@ -77,7 +94,7 @@ class Handler(Handler152):
                     elif name=='ready':
                         s.bounded('ready',32)
                         out={'recipient_ready':s.browser_ready(),'grant_sha256':sha(canonical(s.g)),
-                             'transport_ok':self.server.errors<16 and self.server.accepted<128}
+                             'transport_ok':transport_ready(self.server)}
                     elif name=='buyer':s.bounded('buyer-status',60);out={'acknowledged':s.buyer_ack}
                     elif name=='event':
                         s.bounded('event-read',24)
@@ -128,7 +145,7 @@ def close_access(server,thread):
 def native():
     host();private(ROOT/'ADMISSION.json');g=obj((ROOT/'ADMISSION.json').read_bytes(),32768);validate_grant(g,time.time(),source_binding())
     write_once(ROOT/'NATIVE_INTENT.json',canonical({'grant_sha256':sha(canonical(g))}))
-    state=State(ROOT,g);server=thread=None;reason='PREFLIGHT_FAILURE';result={'status':'UNKNOWN','closed':False}
+    state=State(ROOT,g);server=thread=None;guard=IngressGuard('payproof_c214',min(600,max(1,int(g['expires_at']-time.time()))),state.stop);reason='PREFLIGHT_FAILURE';result={'status':'UNKNOWN','closed':False}
     previous=signal.getsignal(signal.SIGALRM)
     def expired(*_):raise TimeoutError('ABSOLUTE_EXPIRY')
     signal.signal(signal.SIGALRM,expired);signal.setitimer(signal.ITIMER_REAL,max(.001,g['expires_at']-time.time()))
@@ -138,7 +155,10 @@ def native():
         wait=g['start_at']-time.time()
         if wait>0:time.sleep(wait)
         state.require();write_once(ROOT/'SERVER_INTENT.json',canonical({'at':time.time()}))
-        server=Server(state,context,jwks);thread=threading.Thread(target=server.serve_forever,kwargs={'poll_interval':.1});thread.start()
+        guard.open(ROOT)
+        server=Server(state,context,jwks)
+        configure_ingress(context,server,guard)
+        thread=threading.Thread(target=server.serve_forever,kwargs={'poll_interval':.1});thread.start()
         state.stop.wait(max(0,g['expires_at']-time.time()));reason='WORKER_TERMINAL' if state.terminal else 'CAP_OR_EXPIRY'
     except Exception:reason='FAILURE_OR_ABSOLUTE_EXPIRY'
     finally:
@@ -146,10 +166,13 @@ def native():
         # Access closure is independent of custody and payment success.
         try:
             result['closed']=close_access(server,thread)
+            try:result['ingress_restored']=guard.close()
+            except Exception:result['ingress_restored']=False
+            result['closed']=result['closed'] and result['ingress_restored']
         finally:
             try:
                 try:
-                    if server:state.save('TRANSPORT.json',{'accepted':server.accepted,'errors':server.errors,'counts':server.metrics.snapshot(),'peer_data_retained':False})
+                    if server:state.save('TRANSPORT.json',{'accepted':server.accepted,'errors':server.errors,'counts':server.metrics.snapshot(),'expected_errors':server.expected_errors,'ingress':guard.counters,'peer_data_retained':False})
                 finally:state.close(reason)
             except Exception:result['custody']='UNKNOWN_PRESERVE_FILES'
         result.update(status='COMPLETED' if state.terminal and state.terminal['state']=='COMPLETED' and result['closed'] and 'custody' not in result else 'UNKNOWN',reason=reason,accepted=server.accepted if server else 0,errors=server.errors if server else 0,run_id=g['run_id'])
