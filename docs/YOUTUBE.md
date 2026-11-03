@@ -1,3 +1,50 @@
+# Current PayProof film — recorded C244 proof
+
+Video: https://youtu.be/EEMdhzDCnGE
+Duration: 2:52. English narration and captions.
+
+## Title
+
+PayProof — Verified PayPal Sandbox + Local AI | Recorded C244 Demo
+
+## Description
+
+Actual application interaction, labelled synthetic scenarios, and a separate
+recorded successful PayPal Sandbox proof from 3 November 2026. This is retained
+C244 evidence, not a new payment or a live checkout demonstration.
+
+The saved chain is COMPLETED: approval, capture, final order read, authentic
+webhook verification and event binding, followed by local learned advice.
+Independent cleanup returned HTTP204, temporary access closed, and all47
+evidence files passed custody checks. No real money or external AI service.
+
+Source: https://github.com/Elinfiny/PayProof
+Proof: https://github.com/Elinfiny/PayProof/blob/main/docs/SANDBOX_PROOF_2026-11-03.md
+Run: https://github.com/Elinfiny/PayProof/actions/runs/41647346073
+
+Prototype only; no production-readiness or zero-error claim. Earlier UNKNOWN
+attempts remain unresolved. The interface and advisory model cannot move money.
+Narration: stock Kokoro v1.0 af_heart, no person cloned, no music.
+
+## New film delivery verification — 3 November 2026
+
+The existing uploaded video EEMdhzDCnGE is Unlisted, embedding enabled, with
+English video/title/description language, not made for kids and no paid promotion.
+Actual YouTube playback reached the end at 172.021 seconds without a player error.
+The full local export decoded without errors. English captions are burned in;
+a separate SRT is retained. Selectable captions are not claimed for this new film.
+The Owner checked and confirmed the voice is clear; the executor did not independently
+listen through the browser interface. Visual evidence and generated caption timing
+were checked separately. No new PayPal transaction was used to make this film.
+
+## Preserved historical film
+
+The old film remains at https://youtu.be/eG6frmPgfKw. Its original metadata below
+describes that historical film only. The earlier no-reupload statement was
+superseded by the Owner's explicit 3November full-remake instruction.
+
+---
+
 # YouTube metadata for the existing PayProof film
 
 Published final video: https://youtu.be/eG6frmPgfKw.
@@ -52,3 +99,4 @@ do not depict that later result. The description above records the existing
 video's scope, not the absence of all later evidence. The repository and current
 Devpost story distinguish both results explicitly; no new video or successful
 capture footage is claimed.
+

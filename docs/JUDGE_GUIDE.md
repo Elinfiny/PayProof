@@ -33,8 +33,9 @@ this documentation change adds no new browser or platform qualification.
 2. Select buyer approval. Approval alone does not mean a verified paid capture.
 3. Inspect the synthetic completed-capture, pending, conflicting, and unknown
    scenarios. Read evidence status separately from advisory language.
-4. Open the recorded Sandbox panel and its proof details. It shows the historical
-   CONFLICT result and “No payment verified”; it does not refresh PayPal.
+4. Inspect the recorded C244 panel: completed Sandbox capture, final read,
+   verified webhook, saved local advice and cleanup. It makes no PayPal request.
+   The separate original117 panel retains historical CONFLICT / No payment verified.
 5. In a separate opt-in local-AI run, inspect the model status and advisory
    priority. The learned assistant can return unknown. It cannot change payment
    facts or execute financial actions.
@@ -122,3 +123,12 @@ or external model call, capture, or financial action was repeated by the review.
 
 The free judge access method is the complete source setup, retained through
 15 December 2026, 16:00 UTC. No live hosted judge session is promised.
+
+
+## Current presentation — 3 November 2026
+
+The [new 2:52 English film](https://youtu.be/EEMdhzDCnGE) demonstrates the application and
+recorded C244 evidence. The prior 160-second video remains historical. New panel
+validation is separate from the accepted older55checks; those were not replayed.
+See [C244 proof](SANDBOX_PROOF_2026-11-03.md) for the scoped successful chain and
+its limitations. No native credentials or new Sandbox call are needed to view it.

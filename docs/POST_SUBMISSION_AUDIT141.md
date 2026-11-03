@@ -72,3 +72,12 @@ A distinct 3 November Sandbox proof subsequently completed; see
 [its scoped result and cleanup](SANDBOX_PROOF_2026-11-03.md). That new result
 does not retroactively qualify this baseline's historical failures or turn
 unresolved attempts into successes.
+
+
+## Presentation update — 3 November 2026
+
+Owner-requested new English film: https://youtu.be/EEMdhzDCnGE (2:52). It presents actual
+application interaction plus the separately recorded successful C244 proof.
+The previous film and this audit baseline remain historical; no old failed or
+UNKNOWN result is relabelled. See the current publication receipt for playback
+and same-entry Devpost readback; these are separate from the original audit.

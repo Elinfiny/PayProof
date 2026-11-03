@@ -2,8 +2,9 @@
 
 A distinct, bounded PayPal Sandbox proof completed successfully on 3 November
 2026 at 13:54 UTC. It used USD 1.00 of fictitious Sandbox funds, no real money,
-and no external AI service. This is a later proof, separate from the historical
-CONFLICT record shown in the existing 2:40 demonstration video.
+and no external AI service. This later proof is presented explicitly as recorded evidence in the new
+[2:52 demonstration](https://youtu.be/EEMdhzDCnGE). It remains separate from the historical
+CONFLICT record in the retained old film.
 
 ## Verifiable result
 
@@ -46,7 +47,7 @@ production-load qualification.
 
 ## Reading this alongside the film
 
-The existing [English film](https://youtu.be/eG6frmPgfKw) remains the historical
+The earlier [English film](https://youtu.be/eG6frmPgfKw) remains the historical
 application walkthrough: synthetic scenarios plus the 18 October CONFLICT read.
 It is not footage of this new successful chain. The old record remains
 CONFLICT / No payment verified and has not been rewritten.
@@ -55,3 +56,10 @@ This new Sandbox result does not resolve other historical UNKNOWN attempts,
 authorize replay, demonstrate real-money processing, or establish production
 readiness. The local judge walkthrough remains credential-free; the temporary
 proof receiver has been shut down.
+
+
+## New recorded-proof presentation
+
+The new film and dedicated C244 panel show a sanitized saved projection of this result.
+Opening the panel makes no provider call; no payment was repeated for filming.
+The old film and original117 CONFLICT panel remain intact.

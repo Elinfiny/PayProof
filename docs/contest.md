@@ -32,3 +32,11 @@ The [independent post-submission audit](POST_SUBMISSION_AUDIT141.md) records cur
 functional checks and historical native-test limitations. Old private-production
 documents, failed workflow results and consumed/uncertain operations remain
 historical evidence; this status update does not reactivate or replay them.
+
+
+## Current demonstration replacement — 3 November 2026
+
+The same submitted entry1245971 now uses https://youtu.be/EEMdhzDCnGE, a 172-second English
+actual-app demonstration including explicitly recorded C244 proof. The prior
+160-second film remains preserved as history. No second entry or payment was
+created for the remake. Actual URL/playback and Submitted5/5 are checked at delivery.
