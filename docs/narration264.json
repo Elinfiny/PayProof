@@ -1,0 +1,15 @@
+{
+  "duration_seconds": 172,
+  "voice": "af_heart",
+  "voice_kind": "Stock synthetic Kokoro v1.0; no person cloned",
+  "scenes": [
+    {"start": 0, "end": 15, "text": "Approval is not the same as payment. PayProof helps freelancers inspect the evidence before deciding whether work is ready to release."},
+    {"start": 15, "end": 32, "text": "Here is the working application. These interactive scenarios are labelled synthetic. An approved order is not a completed capture. The explanation follows the available facts."},
+    {"start": 32, "end": 55, "text": "A synthetic completed capture changes the evidence state. Conflicting facts and an unavailable provider remain explicit. Uncertainty is not replaced by success. These buttons make no real payment."},
+    {"start": 55, "end": 78, "text": "Now we move to separately recorded, real PayPal Sandbox evidence from November third, twenty twenty-six. This is retained evidence from a completed test, not a new live payment. It used one fictitious US dollar and no real money."},
+    {"start": 78, "end": 103, "text": "The buyer approved the order. The capture completed, and a separate final order read confirmed it. An authentic webhook was received and its signature verified through PayPal. The event was bound to the same payment evidence. Each admitted operation was used once."},
+    {"start": 103, "end": 128, "text": "The local learned model then analysed the validated evidence. It was ready and identified the capture context without uncertainty in this result. Its recommendation is advisory: review the supplied capture evidence and its source. The model cannot send money, capture payments, or issue refunds."},
+    {"start": 128, "end": 150, "text": "Independent cleanup removed the temporary webhook subscription with status two oh four. The receiver and temporary access were closed. All forty-seven retained evidence files passed their custody checks. Original provider payloads and buyer details remain private."},
+    {"start": 150, "end": 172, "text": "PayProof combines a read-only PayPal integration, an evidence ledger, and local learned assistance. This is a verified Sandbox demonstration, not a claim of production readiness. Earlier unknown results remain unresolved. The source, demonstration, and scoped proof are linked in the submission."}
+  ]
+}

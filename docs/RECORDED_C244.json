@@ -1,0 +1,58 @@
+{
+  "amount": "1.00",
+  "attempt": 1,
+  "authentic_webhook_verified": true,
+  "buyer_approval": true,
+  "capture_completed": true,
+  "cleanup": {
+    "access_closed": true,
+    "custody_files": 47,
+    "custody_hashes_verified": true,
+    "http_status": 204,
+    "state": "DELETED_NEW"
+  },
+  "currency": "USD",
+  "environment": "PayPal Sandbox",
+  "event_bound": true,
+  "final_read_confirmed": true,
+  "job_id": 125956063972,
+  "limitations": {
+    "accepted_connections": 221,
+    "errors": 96,
+    "historical_unknowns_resolved": false,
+    "production_qualified": false
+  },
+  "local_assistance": {
+    "corpus_sha256": "4a29e86e87abf252972f05e034a60f589550de95df7dc4a288369b1c0a61c283",
+    "enabled": true,
+    "financial_authority": false,
+    "live_paypal_verified": false,
+    "live_paypal_verified_note": "AI output has no independent provider verification authority; completed payment is verified separately against original provider evidence",
+    "mode": "LOCAL_MODEL_ASSISTANCE",
+    "model_fingerprint": "0513952a8592ad96858b70d87da5cf3d8079b2c5e53e4e38b8dbed2e90d30662",
+    "model_ready": true,
+    "payment_actions": [],
+    "priority": "capture_context",
+    "synthetic": false,
+    "uncertainty": false
+  },
+  "provenance": "Sanitized projection of retained C244 receipt; original provider payloads remain private. Hash consistency is not independent provider attestation.",
+  "provider_slots": {
+    "approval_read": 1,
+    "capture": 1,
+    "event_read": 1,
+    "final_read": 1,
+    "oauth": 1,
+    "order_create": 1,
+    "subscription_create": 1,
+    "subscription_delete": 1,
+    "subscription_read": 1,
+    "verify": 1
+  },
+  "real_money": false,
+  "recorded_date": "2026-11-03",
+  "run_id": 41647346073,
+  "schema": "PAYPROOF_RECORDED_C244_V1",
+  "source_commit": "56f0716835d0ca9054b5d297102b6fea47058b88",
+  "state": "COMPLETED"
+}

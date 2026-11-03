@@ -1,0 +1,62 @@
+name: PayProof recorded C244 English film264
+on:
+  workflow_dispatch:
+    inputs:
+      expected_head:
+        description: Exact prepared main source
+        required: true
+        type: string
+      invocation:
+        description: PAYPROOF-VIDEO264-ONCE
+        required: true
+        type: string
+permissions: {}
+concurrency:
+  group: payproof-video264
+  cancel-in-progress: false
+jobs:
+  film:
+    if: ${{ github.event_name == 'workflow_dispatch' && github.repository_id == '1419908202' && github.actor_id == '273768139' && github.ref == 'refs/heads/main' && github.run_attempt == 1 && inputs.invocation == 'PAYPROOF-VIDEO264-ONCE' && github.sha == inputs.expected_head }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Frozen public source, no retained credential
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ inputs.expected_head }}
+          persist-credentials: false
+      - name: Qualified recording runtime
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
+        with:
+          node-version: '22.23.3'
+          package-manager-cache: false
+      - name: Install pinned isolated authoring dependencies
+        run: |
+          set -euo pipefail
+          timeout 120 npm ci --prefix qa --ignore-scripts --no-audit --no-fund --fetch-retries=0
+          timeout 180 node qa/node_modules/playwright/cli.js install --no-shell --no-progress --no-remove chromium
+          python3 -m venv "$RUNNER_TEMP/voice264"
+          timeout 120 "$RUNNER_TEMP/voice264/bin/pip" install --disable-pip-version-check --no-cache-dir -r qa/requirements-video264.txt
+          "$RUNNER_TEMP/voice264/bin/pip" check
+          ffmpeg -version | head -1
+      - name: New targeted recorded-panel checks
+        run: node qa/recorded244.test.cjs
+      - name: Record actual offline application once
+        run: timeout 240 node qa/video264.cjs
+      - name: Narrate and caption this same recording
+        run: timeout 360 "$RUNNER_TEMP/voice264/bin/python" tools/render264.py
+      - name: Preserve recording and deliverables, including partial results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: payproof-video264-${{ github.run_id }}
+          path: |
+            media264/*.webm
+            media264/capture.json
+            media264/deliverables/*
+          if-no-files-found: warn
+          retention-days: 1
+          compression-level: 0
+          overwrite: false

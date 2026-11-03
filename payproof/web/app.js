@@ -110,3 +110,24 @@ const recordedRun118Ready = (async () => {
     unavailable();
   }
 })();
+
+
+// C244 is a separate immutable recorded projection. Never call a provider here.
+const recordedC244Ready = (async () => {
+  const status = byId('proof244-status'), content = byId('proof244-content');
+  if (!status || !content) return;
+  try {
+    const data = byId('proof244-data');
+    if (!data || data.textContent.length > 8192 || !crypto.subtle) return;
+    const record = JSON.parse(data.textContent);
+    const canonical = v => JSON.stringify(v && typeof v === 'object'
+      ? (Array.isArray(v) ? v.map(x => JSON.parse(canonical(x)))
+        : Object.fromEntries(Object.keys(v).sort().map(k => [k, JSON.parse(canonical(v[k]))]))) : v);
+    const digest = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonical(record)))), b => b.toString(16).padStart(2,'0')).join('');
+    if (digest !== '6cb9041e6ac2de4a84a9800f74371fafe91674f2615edb49e0e46ef286c85ac9' || record.schema !== 'PAYPROOF_RECORDED_C244_V1' || record.run_id !== 41647346073 || record.state !== 'COMPLETED') return;
+    status.textContent = 'COMPLETED · recorded'; status.dataset.state = 'COMPLETED';
+    byId('proof244-json').textContent = JSON.stringify(record,null,2);
+    byId('proof244-integrity').textContent = 'Saved projection integrity verified. No current PayPal request.';
+    content.hidden = false;
+  } catch (_) { /* Fail closed; no synthetic success substituted. */ }
+})();
