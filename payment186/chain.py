@@ -5,6 +5,7 @@ issuer. The synthetic harness cannot select the network transport. No CLI,
 environment variable or public JSON turns this module on.
 """
 import base64,copy,hashlib,http.client,json,re,ssl,time
+from datetime import datetime,timezone
 from dataclasses import dataclass
 from urllib.parse import urlsplit,parse_qs
 from payproof.admission import SandboxContext,_json
@@ -26,6 +27,31 @@ def require_url(url):
  p=urlsplit(url)
  if p.scheme!='https' or not p.hostname or p.username or p.password or p.port not in (None,443) or p.query or p.fragment or p.path!='/webhooks/payproof186':raise InvalidData('LISTENER_HTTPS443_BINDING151')
  return url
+
+def approved_order229(raw,expected,not_before,now):
+ """An approval precondition, never a projection of verified paid funds.
+
+ PayPal may omit order update_time before capture. In that case require the
+ provider's real create_time inside this bounded run, with the exact order,
+ amount and no payments. Never manufacture provider freshness timestamps.
+ The caller obtains this response through its once-only live approval GET.
+ """
+ if not isinstance(raw,dict) or raw.get('id')!=expected['id'] or raw.get('status')!='APPROVED':raise InvalidData('APPROVED_MATCHING_ORDER151')
+ if 'update_time' in raw:
+  p=project_order(raw,expected)
+  if p['captures']:raise InvalidData('APPROVED_MATCHING_ORDER151')
+  return
+ units=raw.get('purchase_units')
+ if not isinstance(units,list) or len(units)!=1 or not isinstance(units[0],dict):raise InvalidData('APPROVED_MATCHING_ORDER151')
+ unit=units[0];amount=unit.get('amount');payments=unit.get('payments',{})
+ if not isinstance(amount,dict) or (amount.get('value'),amount.get('currency_code'))!=(expected['amount'],expected['currency']):raise InvalidData('APPROVED_MATCHING_ORDER151')
+ if not isinstance(payments,dict) or any(v!=[] for v in payments.values()):raise InvalidData('APPROVED_MATCHING_ORDER151')
+ stamp=raw.get('create_time')
+ if not isinstance(stamp,str):raise InvalidData('APPROVED_MATCHING_ORDER151')
+ try:
+  created=datetime.fromisoformat(stamp.replace('Z','+00:00'))
+  if created.tzinfo is None or not not_before<=created.timestamp()<=now:raise ValueError()
+ except ValueError:raise InvalidData('APPROVED_MATCHING_ORDER151') from None
 
 @dataclass(frozen=True,repr=False)
 class Grant151:
@@ -194,7 +220,7 @@ class Chain151:
   if not self.order:raise InvalidData('REGISTERED_ORDER151')
   r=self.effect('approval_read','GET','/v2/checkout/orders/'+self.order)
   try:
-   p=project_order(r,{'id':self.order,'amount':'1.00','currency':'USD'});assert r['status']=='APPROVED' and not p['captures']
+   approved_order229(r,{'id':self.order,'amount':'1.00','currency':'USD'},self.grant.not_before,self.clock())
   except Exception:raise InvalidData('APPROVED_MATCHING_ORDER151') from None
   self._approved=True
   r=self.effect('capture','POST','/v2/checkout/orders/'+self.order+'/capture',{})
