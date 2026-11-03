@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   film:
-    if: ${{ github.event_name == 'workflow_dispatch' && github.repository_id == '1419908202' && github.actor_id == '273768139' && github.ref == 'refs/heads/main' && github.run_attempt == 1 && inputs.invocation == 'PAYPROOF-VIDEO268-CAPTURE-ONCE' && github.sha == inputs.expected_head }}
+    if: false # Consumed: run41698007839; keep capture and render, no replay
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
