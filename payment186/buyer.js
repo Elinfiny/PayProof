@@ -55,7 +55,9 @@ const PaymentBuyer186 = (() => {
       for(let n=0;n<60;n++) {
         const response=await request('/buyer186/envelope');
         if(response.status===200){receipt=await unpack(response.raw,binding,response.digest,key.privateKey);break;}
-        need(n<59);await new Promise(resolve=>setTimeout(resolve,2000));
+        // Same 60 reads, lower polling rate. Keep five minutes for approval.
+        need(n<59 && Date.now()/1000<binding.expires_at-300);
+        await new Promise(resolve=>setTimeout(resolve,4000));
       }
       need(receipt && !stopped);key=null;link.href=receipt.url;link.hidden=false;ack.hidden=false;ack.disabled=false;
       status.textContent='Comanda de test este pregătită. Deschide PayPal Sandbox, aprobă acolo, apoi revino aici.';

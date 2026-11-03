@@ -6,7 +6,7 @@ HOST='v2202609412152514007.ultrasrv.de'; HOSTNAME='v2202609412152514007'
 ISSUER='https://token.actions.githubusercontent.com'
 AUDIENCE='urn:payproof:netcup932863:payment186'
 WORKFLOW=REPO+'/.github/workflows/payproof-payment186.yml@refs/heads/main'
-ROOT=pathlib.Path('/root/payproof-payment186-c235')
+ROOT=pathlib.Path('/root/payproof-payment186-c237')
 APP='b954b4c7eff1b9aac313ca9867e2d8fa31fb1782453b0ce583cb2dd1bb436e74'
 OPS=('oauth','subscription_read','subscription_create','order_create','approval_read','capture','final_read','verify','event_read','subscription_delete')
 LIMITS={'session_seconds':600,'job_minutes':10,'accepted_connections':512,'PayPal_calls':10,'certificate_GETs':2,'JWKS_GETs':1,'fake_USD':'1.00','real_USD':'0.00','extra_cost':'0.00','oidc_tokens':2,'browser_recipient_keys':1,'retries':0}

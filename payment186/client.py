@@ -44,17 +44,31 @@ def preflight():
     wait=start+1-time.time()
     if wait>0:time.sleep(wait)
     api=API(token(start+600),start+600)
+    bound=False
     try:
-        g=checked_grant(api)
+        g=checked_grant(api);bound=True
         for n in range(30):
+            require(time.time()<start+120,'BUYER_ROUTE_UNAVAILABLE')
             ready=api.call('ready');require(ready['grant_sha256']==sha(canonical(g)),'GRANT_READINESS')
             if ready.get('transport_ok') is not True:
                 # Fail before credentials and before any PayPal effect. This
                 # consumes this attempt; it never rearms or retries anything.
-                api.call('terminal',{'state':'REFUSED','provider_slots':{},'bridge_unknown':False,
-                         'cleanup':'NOT_COMPLETED','order_sha256':None,'capture_sha256':None},terminal=True)
                 raise Refused('TRANSPORT_UNHEALTHY_BEFORE_PAYPAL')
             if ready.get('recipient_ready') is True:break
-            require(n<29,'BUYER_ROUTE_UNAVAILABLE');time.sleep(2)
+            require(n<29,'BUYER_ROUTE_UNAVAILABLE')
+            # Spread the same 30 reads over the existing 120s start window.
+            # Reserve the remaining 480s; neither call nor session caps grow.
+            time.sleep(min(4,max(0,start+120-time.time())))
         write_once(root/'PREFLIGHT.json',canonical(g));return 0
+    except Exception:
+        # No provider credentials have been released. Close the exact bound
+        # receiver once even on readiness exhaustion or an uncertain read.
+        # Failure of this notification leaves independent native expiry armed.
+        if bound:
+            try:
+                api.call('terminal',{'state':'UNKNOWN' if api.frozen else 'REFUSED',
+                         'provider_slots':{},'bridge_unknown':api.frozen,
+                         'cleanup':'NOT_COMPLETED','order_sha256':None,'capture_sha256':None},terminal=True)
+            except Exception:pass
+        raise
     finally:api.close()
