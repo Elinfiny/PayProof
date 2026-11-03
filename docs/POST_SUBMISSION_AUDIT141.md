@@ -64,3 +64,11 @@ No successful paid lifecycle, authentic webhook, fresh Sandbox session,
 comprehensive cross-platform audit, full perceptual audio review or future
 uptime is claimed. Submitted is verified delivery, not an eligibility/prize
 guarantee. Maintain free source/video access through the judging deadline.
+
+## Later evidence outside this audit's baseline
+
+The statements above describe the 30 October review and remain historical.
+A distinct 3 November Sandbox proof subsequently completed; see
+[its scoped result and cleanup](SANDBOX_PROOF_2026-11-03.md). That new result
+does not retroactively qualify this baseline's historical failures or turn
+unresolved attempts into successes.

@@ -14,6 +14,16 @@ it is not an eligibility, prize, or production-readiness guarantee.
 - [Watch the 2:40 demonstration](https://youtu.be/eG6frmPgfKw)
 - [Independent post-submission review and known limits](docs/POST_SUBMISSION_AUDIT141.md)
 
+## Later verified Sandbox proof — 3 November 2026
+
+A separate bounded proof now demonstrates a completed USD 1.00 fictitious
+Sandbox capture, final order read, authentic webhook verification, and local AI
+advice, followed by independent cleanup and closure. See the
+[verified proof and evidence boundaries](docs/SANDBOX_PROOF_2026-11-03.md)
+and [successful run](https://github.com/Elinfiny/PayProof/actions/runs/41647346073).
+The existing film and recorded panel preserve their original historical
+CONFLICT result; they are not footage of the later successful chain.
+
 ## Run the interactive application
 
 The qualified environment is Linux with Python 3.12.14, standard-library SQLite,

@@ -67,12 +67,27 @@ showing the application functioning. Existing recorded-panel checks covered
 390×844 and 1440×900. The film lasts 2:40. These are scoped results, not a claim
 that the prototype is production ready or that every financial path has passed.
 
+### Later verified Sandbox proof — 3 November 2026
+
+A separate bounded USD 1.00 fictitious Sandbox chain completed successfully:
+buyer approval, capture, final order read, authentic webhook verification and
+event binding, followed by local learned advice on the validated evidence.
+The model was ready and suggested reviewing the capture context; it had no
+financial authority. Independent cleanup returned HTTP 204, temporary access
+was closed, and all 47 retained evidence files passed their hash inventory.
+[Successful run](https://github.com/Elinfiny/PayProof/actions/runs/41647346073)
+and [scoped evidence](https://github.com/Elinfiny/PayProof/blob/main/docs/SANDBOX_PROOF_2026-11-03.md).
+
+The existing 2:40 film remains a historical application walkthrough, including
+the unchanged CONFLICT record. It is not footage of this later successful chain.
+No real-money or production-readiness claim is made.
+
 ### What's next
 
 Improve the explanation of conflicting evidence and broaden deployment and
 accessibility validation. Any further real Sandbox experiment needs separate
-admission and secure custody. Successful capture, authentic webhook delivery,
-and a production payment lifecycle are not demonstrated by this entry material.
+admission and secure custody. The later Sandbox proof is separately documented;
+a production payment lifecycle remains unqualified.
 
 ## Built with
 
@@ -95,7 +110,7 @@ The final narration is Kokoro v1.0 `af_heart`. Hosted demo URL: none claimed.
 
 | Criterion | Evidence the reviewer can assess | Limit |
 | --- | --- | --- |
-| Technological Implementation | PayPal read-only service, validation, SQLite ledger, local learned model, and real recorded abstention. | No successful paid lifecycle or new positive prediction is claimed. |
+| Technological Implementation | PayPal read-only service, validation, SQLite ledger, local learned model, and real recorded abstention. | Later Sandbox proof is separately documented; no real-money lifecycle or production readiness is claimed. |
 | Design | Interactive evidence states, separate recorded proof, expandable details, and two tested viewport sizes. | These checks do not certify every platform or accessibility requirement. |
 | Potential Impact | Concrete freelancer decision: inspect whether available evidence supports starting work. | No measured customer adoption or financial savings. |
 | Innovation/Idea | Local learned assistance constrained by validated payment evidence and visible abstention. | No claim of market uniqueness. |

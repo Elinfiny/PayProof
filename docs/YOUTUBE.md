@@ -43,3 +43,12 @@ Source is MIT licensed. Third-party notices are included in the repository.
   performer or voice clone. No music was used.
 - Original footage and prior failed production results are retained as history;
   no later successful publication converts an old failed job into a pass.
+
+## Later proof, separate from the film — 3 November 2026
+
+The [new verified Sandbox chain](SANDBOX_PROOF_2026-11-03.md) completed after
+this film was recorded. The unchanged film and its historical CONFLICT record
+do not depict that later result. The description above records the existing
+video's scope, not the absence of all later evidence. The repository and current
+Devpost story distinguish both results explicitly; no new video or successful
+capture footage is claimed.
