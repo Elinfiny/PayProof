@@ -37,7 +37,11 @@ The Owner checked and confirmed the voice is clear; the executor did not indepen
 listen through the browser interface. Visual evidence and generated caption timing
 were checked separately. No new PayPal transaction was used to make this film.
 
-## Preserved historical film
+## Preserved historical film — archived metadata only
+
+<details><summary>Superseded160-secondfilm metadata; not current Devpost or testing instructions</summary>
+
+
 
 The old film remains at https://youtu.be/eG6frmPgfKw. Its original metadata below
 describes that historical film only. The earlier no-reupload statement was
@@ -100,3 +104,5 @@ video's scope, not the absence of all later evidence. The repository and current
 Devpost story distinguish both results explicitly; no new video or successful
 capture footage is claimed.
 
+
+</details>

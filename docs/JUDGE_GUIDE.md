@@ -60,9 +60,11 @@ Sandbox JSON and local training corpus JSON as package data. The post-submission
 review describes the separate wheel-content and isolated source-start checks;
 neither grants a native Sandbox session or installs optional provider authority.
 
-## Existing reviewer package
+## Historical reviewer package — superseded for current evaluation
 
-If reviewing the separately supplied immutable reviewer ZIP, extract it into a
+Use the current complete Git checkout above for the C244 presentation. The old
+immutable reviewer ZIP preserves its original scope and does not demonstrate the
+new recorded C244 panel. Only for historical reproduction, extract it into a
 new directory. From its `PayProof_contest84/` folder, run:
 
 ```sh
@@ -95,7 +97,7 @@ recorded paths for the credential-free judge walkthrough. A separate native
 deployment/admission setup is required for a fresh real API run; it is not claimed
 as a turnkey public hosted demo.
 
-## Validation and availability
+## Historical validation and availability —30 October scope
 
 The public source setup, public video, and Submitted Devpost entry were verified
 after submission on 30 October 2026. An independent offline review started both
@@ -114,8 +116,9 @@ The independent review also found historical native-admission test harness drift
 The current source addresses the uncovered cases, preserves the original
 failures and separates reused results from newly executed cases. Independent
 review151 accepted the reviewed corrections and their local validation scope;
-it does not establish a current successful real Sandbox capture or authenticated
-webhook. The response binding covers the parsed order JSON, which can include
+it did not by itself establish a successful real Sandbox capture or authenticated
+webhook. The later separately admitted C244 proof now supplies that scoped evidence;
+see the current presentation section below. The response binding covers the parsed order JSON, which can include
 provider personal data; its digest does not hash the separate OAuth response
 and is not a guarantee that arbitrary order fields contain no sensitive values. See
 [the scoped audit and known limits](POST_SUBMISSION_AUDIT141.md). No real PayPal
