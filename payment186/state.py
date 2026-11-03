@@ -124,6 +124,6 @@ class State:
         self.closed=True;self.stop.set();self.recipient=None;self.cap_sha=None;self.wire=None;self.signature=None
         # stdout is still open and receives the final result after this method.
         # NATIVE_RESULT.json and CLOSED.json are separate immutable receipts.
-        manifest={p.name:{'bytes':p.stat().st_size,'sha256':sha(p.read_bytes())} for p in self.root.iterdir() if p.is_file() and not p.is_symlink() and p.name not in ('CLOSED.json','CUSTODY.json','native.out')}
+        manifest={p.name:{'bytes':p.stat().st_size,'sha256':sha(p.read_bytes())} for p in self.root.iterdir() if p.is_file() and not p.is_symlink() and p.name not in ('CLOSED.json','CUSTODY.json','native.out','native.stdout')}
         self.save('CUSTODY.json',{'schema':'PAYMENT186_PRIVATE_CUSTODY','files':manifest})
         self.save('CLOSED.json',{'state':'ACCESS_CLOSED','reason':reason,'at':self.clock(),'provider_cleanup':'See WORKER_TERMINAL; unknown effects never retried','evidence_preserved':True})

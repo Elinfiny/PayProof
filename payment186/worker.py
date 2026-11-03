@@ -56,7 +56,16 @@ def execute():
         print(json.dumps({'schema':'PAYMENT186_SANITIZED_RESULT','state':report['state'],'provider_slots':report['provider_slots'],'cleanup':report['cleanup'],'private_originals_exported':False},sort_keys=True))
     return 0 if report['state']=='COMPLETED' else 1
 
+def main(mode):
+    try:
+        return preflight() if mode=='preflight' else execute() if mode=='execute' else 1
+    except Exception as exc:
+        # Only fixed, nonsecret diagnostics; never serialize arbitrary exceptions.
+        allowed={'BUYER_ROUTE_UNAVAILABLE','TRANSPORT_UNHEALTHY_BEFORE_PAYPAL','START_WINDOW'}
+        reason=exc.args[0] if isinstance(exc,Refused) and len(exc.args)==1 and isinstance(exc.args[0],str) and exc.args[0] in allowed else 'UNCLASSIFIED_PRESERVE_UNKNOWN'
+        print(json.dumps({'state':'REFUSED_OR_UNKNOWN','retry':False,'reason':reason},sort_keys=True))
+        return 1
+
 if __name__=='__main__':
     import sys
-    try:raise SystemExit(preflight() if sys.argv[1]=='preflight' else execute() if sys.argv[1]=='execute' else 1)
-    except Exception:print('{"state":"REFUSED_OR_UNKNOWN","retry":false}');raise SystemExit(1)
+    raise SystemExit(main(sys.argv[1] if len(sys.argv)>1 else ''))
