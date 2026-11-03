@@ -7,7 +7,7 @@ on:
         required: true
         type: string
       invocation:
-        description: PAYPROOF-VIDEO264-ONCE
+        description: PAYPROOF-VIDEO267-RECOVERY-ONCE
         required: true
         type: string
 permissions: {}
@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   film:
-    if: ${{ github.event_name == 'workflow_dispatch' && github.repository_id == '1419908202' && github.actor_id == '273768139' && github.ref == 'refs/heads/main' && github.run_attempt == 1 && inputs.invocation == 'PAYPROOF-VIDEO264-ONCE' && github.sha == inputs.expected_head }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.repository_id == '1419908202' && github.actor_id == '273768139' && github.ref == 'refs/heads/main' && github.run_attempt == 1 && inputs.invocation == 'PAYPROOF-VIDEO267-RECOVERY-ONCE' && github.sha == inputs.expected_head }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -40,7 +40,18 @@ jobs:
           python3 -m venv "$RUNNER_TEMP/voice264"
           timeout 120 "$RUNNER_TEMP/voice264/bin/pip" install --disable-pip-version-check --no-cache-dir -r qa/requirements-video264.txt
           "$RUNNER_TEMP/voice264/bin/pip" check
-          ffmpeg -version | head -1
+          python3 - <<'PY'
+          import shutil,subprocess,re
+          if not (shutil.which('ffmpeg') and shutil.which('ffprobe')):
+              subprocess.run(['sudo','-n','apt-get','update'],check=True,timeout=60)
+              args=['apt-get','-o','Acquire::AllowInsecureRepositories=false','-o','APT::Get::AllowUnauthenticated=false','--no-install-recommends','--no-upgrade']
+              plan=subprocess.check_output([*args,'--print-uris','--yes','install','ffmpeg'],text=True,timeout=30)
+              sizes=[int(x) for x in re.findall(r"^'[^']+' \S+ (\d+) \S+$",plan,re.M)]
+              assert sizes and sum(sizes)<=128*1024**2, 'Authoring dependency download cap'
+              subprocess.run(['sudo','-n',*args,'--yes','install','ffmpeg'],check=True,timeout=180)
+          subprocess.run(['ffmpeg','-version'],check=True,timeout=5)
+          subprocess.run(['ffprobe','-version'],check=True,timeout=5)
+          PY
       - name: New targeted recorded-panel checks
         run: node qa/recorded244.test.cjs
       - name: Record actual offline application once
