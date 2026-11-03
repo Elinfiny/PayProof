@@ -145,7 +145,7 @@ def close_access(server,thread):
 def native():
     host();private(ROOT/'ADMISSION.json');g=obj((ROOT/'ADMISSION.json').read_bytes(),32768);validate_grant(g,time.time(),source_binding())
     write_once(ROOT/'NATIVE_INTENT.json',canonical({'grant_sha256':sha(canonical(g))}))
-    state=State(ROOT,g);server=thread=None;guard=IngressGuard('payproof_c237',min(600,max(1,int(g['expires_at']-time.time()))),state.stop);reason='PREFLIGHT_FAILURE';result={'status':'UNKNOWN','closed':False}
+    state=State(ROOT,g);server=thread=None;guard=IngressGuard('payproof_c241',min(600,max(1,int(g['expires_at']-time.time()))),state.stop);reason='PREFLIGHT_FAILURE';result={'status':'UNKNOWN','closed':False}
     previous=signal.getsignal(signal.SIGALRM)
     def expired(*_):raise TimeoutError('ABSOLUTE_EXPIRY')
     signal.signal(signal.SIGALRM,expired);signal.setitimer(signal.ITIMER_REAL,max(.001,g['expires_at']-time.time()))

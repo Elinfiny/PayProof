@@ -225,8 +225,8 @@ class Chain151:
   self._approved=True
   r=self.effect('capture','POST','/v2/checkout/orders/'+self.order+'/capture',{})
   try:
-   p=project_order(r,{'id':self.order,'amount':'1.00','currency':'USD'});assert r['status']=='COMPLETED' and len(p['captures'])==1 and p['captures'][0]['status']=='COMPLETED' and p['captures'][0]['amount']=='1.00'
-   self.capture_id=p['captures'][0]['id']
+   from .capture241 import completed_capture241
+   self.capture_id=completed_capture241(r,{'id':self.order,'amount':'1.00','currency':'USD'},self.grant.not_before,self.clock())
   except Exception:self.freeze()
  def read_final(self):
   self.require()
