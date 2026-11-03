@@ -13,7 +13,9 @@ const deadline=setTimeout(()=>{if(server)server.kill('SIGTERM');process.exit(2)}
  server=spawn('python3',['-u','-B','-m','payproof.server','--mode','fixture','--db',path.join(out,'fixture.sqlite3'),'--port','0'],{env:{PATH:process.env.PATH,LANG:'C.UTF-8'},stdio:['ignore','pipe','pipe']});
  server.stdout.on('data',b=>logs+=b);server.stderr.on('data',b=>logs+=b);const closed=new Promise(r=>server.on('close',(code,signal)=>{exit={code,signal};r();}));
  let origin;for(let i=0;i<100;i++){origin=logs.match(/http:\/\/127\.0\.0\.1:\d+/)?.[0];if(origin)break;if(exit)throw Error('Fixture exited');await wait(100);}assert(origin,'Fixture startup');
- browser=await chromium.launch({headless:true});
+ const executable=chromium.executablePath();
+ assert.equal(crypto.createHash('sha256').update(fs.readFileSync(executable)).digest('hex'),'377a9fc07b495c3b8d0ab8ec1fdfd153641759f9756fea34d8dfce4de82f5025');
+ browser=await chromium.launch({headless:true,executablePath:executable});
  context=await browser.newContext({viewport:{width:1280,height:720},recordVideo:{dir:out,size:{width:1280,height:720}},serviceWorkers:'block'});
  await context.route('**/*',route=>{const q=route.request(),u=new URL(q.url());const ok=u.origin===origin&&((q.method()==='GET'&&['/','/app.js','/style.css','/api/state','/favicon.ico'].includes(u.pathname))||(q.method()==='POST'&&u.pathname==='/api/fixture'));receipt.requests.push({path:u.origin===origin?u.pathname:'BLOCKED_EXTERNAL',method:q.method(),allowed:ok});return ok?route.continue():route.abort();});
  const opened=performance.now(),page=await context.newPage();video=page.video();page.on('pageerror',e=>receipt.page_errors.push(e.message));page.setDefaultTimeout(6000);

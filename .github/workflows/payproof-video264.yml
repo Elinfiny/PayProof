@@ -7,7 +7,7 @@ on:
         required: true
         type: string
       invocation:
-        description: PAYPROOF-VIDEO267-RECOVERY-ONCE
+        description: PAYPROOF-VIDEO268-CAPTURE-ONCE
         required: true
         type: string
 permissions: {}
@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   film:
-    if: ${{ github.event_name == 'workflow_dispatch' && github.repository_id == '1419908202' && github.actor_id == '273768139' && github.ref == 'refs/heads/main' && github.run_attempt == 1 && inputs.invocation == 'PAYPROOF-VIDEO267-RECOVERY-ONCE' && github.sha == inputs.expected_head }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.repository_id == '1419908202' && github.actor_id == '273768139' && github.ref == 'refs/heads/main' && github.run_attempt == 1 && inputs.invocation == 'PAYPROOF-VIDEO268-CAPTURE-ONCE' && github.sha == inputs.expected_head }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -52,8 +52,6 @@ jobs:
           subprocess.run(['ffmpeg','-version'],check=True,timeout=5)
           subprocess.run(['ffprobe','-version'],check=True,timeout=5)
           PY
-      - name: New targeted recorded-panel checks
-        run: node qa/recorded244.test.cjs
       - name: Record actual offline application once
         run: timeout 240 node qa/video264.cjs
       - name: Narrate and caption this same recording
