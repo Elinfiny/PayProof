@@ -1,6 +1,6 @@
 """Exclusive native source staging only. No admission, key or listener."""
 import hashlib,json,os,pathlib,re,socket,subprocess,sys
-ROOT=pathlib.Path('/root/payproof-payment186-c241');MIRROR='/root/ubc-mirror80/contr'
+ROOT=pathlib.Path('/root/payproof-payment186-c244');MIRROR='/root/ubc-mirror80/contr'
 def main(commit):
     if os.getuid()!=0 or socket.gethostname()!='v2202609412152514007' or not re.fullmatch('[a-f0-9]{40}',commit):raise ValueError('IDENTITY')
     def read(name):
